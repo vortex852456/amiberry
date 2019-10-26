@@ -166,6 +166,10 @@ void stop_sound()
 
 void finish_sound_buffer()
 {
+#ifdef DRIVESOUND
+	// driveclick_mix ((uae_s16*)paula_sndbuffer, paula_sndbufsize / 2, currprefs.dfxclickchannelmask);
+	driveclick_mix((uae_s16*)paula_sndbuffer, bufsize / 2, currprefs.dfxclickchannelmask);
+#endif
 	wrcnt++;
 	sndbufpt = render_sndbuff = sndbuffer[wrcnt & SOUND_BUFFERS_COUNT - 1];
 
@@ -227,6 +231,9 @@ int setup_sound()
 
 static int open_sound()
 {
+	if (!currprefs.produce_sound) {
+		return 0;
+	}
 	config_changed = 1;
 	if (start_sound(currprefs.sound_freq, 16, currprefs.sound_stereo) != 0)
 		return 0;
@@ -241,6 +248,10 @@ static int open_sound()
 	else
 		sample_handler = sample16_handler;
 
+#ifdef DRIVESOUND
+	driveclick_init();
+#endif
+	
 	return 1;
 }
 
@@ -264,6 +275,9 @@ int init_sound()
 	gui_data.sndbuf = 0;
 	gui_data.sndbuf_avail = false;
 	have_sound = open_sound();
+#ifdef DRIVESOUND
+	driveclick_reset();
+#endif
 	return have_sound;
 }
 

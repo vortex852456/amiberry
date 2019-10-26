@@ -197,6 +197,9 @@ void devices_reset(int hardreset)
 #ifdef AUTOCONFIG
 	rtarea_reset();
 #endif
+#ifdef DRIVESOUND
+	driveclick_reset();
+#endif
 	uae_int_requested = 0;
 }
 
@@ -297,7 +300,9 @@ void do_leave_program (void)
 	free_shm ();
 	cfgfile_addcfgparam (0);
 	machdep_free ();
-	//driveclick_free();
+#ifdef DRIVESOUND
+	driveclick_free();
+#endif
 	//ethernet_enumerate_free();
 	rtarea_free();
 

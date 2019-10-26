@@ -1112,6 +1112,9 @@ void check_prefs_changed_audio (void)
 			audio_activate();
 		}
 	}
+#ifdef DRIVESOUND
+	driveclick_check_prefs();
+#endif
 }
 
 void set_audio (void)
