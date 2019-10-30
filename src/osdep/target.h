@@ -11,7 +11,7 @@
 
 #define NO_MAIN_IN_MAIN_C
 
-#define OPTIONSFILENAME "uaeconfig"
+#define OPTIONSFILENAME _T("default")
 
 #if !defined(ARMV6T2) && !defined(CPU_AARCH64)
 #undef USE_JIT_FPU
@@ -32,8 +32,6 @@ STATIC_INLINE FILE *uae_tfopen(const TCHAR *path, const TCHAR *mode)
 
 extern void fix_apmodes(struct uae_prefs *p);
 extern int generic_main (int argc, char *argv[]);
-
-#define OFFSET_Y_ADJUST 18
 
 extern int emulating;
 
@@ -59,6 +57,7 @@ void keyboard_settrans();
 
 extern void free_AmigaMem();
 extern void alloc_AmigaMem();
+extern bool can_have_1gb();
 
 extern void fetch_configurationpath(char *out, int size);
 extern void set_configurationpath(char *newpath);

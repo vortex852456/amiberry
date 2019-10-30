@@ -49,7 +49,7 @@ long int version = 256 * 65536L * UAEMAJOR + 65536L * UAEMINOR + UAESUBREV;
 struct uae_prefs currprefs, changed_prefs;
 int config_changed;
 
-bool no_gui = false;
+bool no_gui = false, quit_to_gui = false;
 bool cloanto_rom = false;
 bool kickstart_rom = true;
 
@@ -101,15 +101,15 @@ void discard_prefs(struct uae_prefs* p, int type)
 
 static void fixup_prefs_dim2(struct wh* wh)
 {
-	if (wh->width < 320)
+	if (wh->width < 160)
 	{
-		error_log(_T("Width (%d) must be at least 320."), wh->width);
-		wh->width = 320;
+		error_log(_T("Width (%d) must be at least 160."), wh->width);
+		wh->width = 160;
 	}
-	if (wh->height < 200)
+	if (wh->height < 128)
 	{
-		error_log(_T("Height (%d) must be at least 200."), wh->height);
-		wh->height = 200;
+		error_log(_T("Height (%d) must be at least 128."), wh->height);
+		wh->height = 128;
 	}
 	if (wh->width > 1920)
 	{
@@ -829,15 +829,15 @@ static int real_main2(int argc, TCHAR** argv)
 		fixup_prefs(&currprefs, true);
 	}
 
-	if (restart_config[0])
-		parse_cmdline_and_init_file(argc, argv);
-	else
-		copy_prefs(&changed_prefs, &currprefs);
-
 	if (!graphics_setup())
 	{
 		abort();
 	}
+	
+	if (restart_config[0])
+		parse_cmdline_and_init_file(argc, argv);
+	else
+		copy_prefs(&changed_prefs, &currprefs);
 
 	if (!machdep_init())
 	{
@@ -942,7 +942,9 @@ void real_main(int argc, TCHAR** argv)
 	while (restart_program)
 	{
 		copy_prefs(&currprefs, &changed_prefs);
-		real_main2(argc, argv);
+		auto ret = real_main2(argc, argv);
+		if (ret == 0 && quit_to_gui)
+			restart_program = 1;
 		leave_program();
 		quit_program = 0;
 	}

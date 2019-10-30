@@ -8,17 +8,17 @@
 #include "include/memory.h"
 #include "gfxboard.h"
 #include "gui_handling.h"
-
+#include "target.h"
 
 static const char* ChipMem_list[] = {"512 K", "1 MB", "2 MB", "4 MB", "8 MB"};
 static unsigned int ChipMem_values[] = {0x080000, 0x100000, 0x200000, 0x400000, 0x800000};
 static const char* SlowMem_list[] = {"None", "512 K", "1 MB", "1.5 MB", "1.8 MB"};
 static unsigned int SlowMem_values[] = {0x000000, 0x080000, 0x100000, 0x180000, 0x1c0000};
 static const char* FastMem_list[] = {
-	"None", "1 MB", "2 MB", "4 MB", "8 MB", "16 MB", "32 MB", "64 MB", "128 MB", "256 MB", "512 MB"
+	"None", "1 MB", "2 MB", "4 MB", "8 MB", "16 MB", "32 MB", "64 MB", "128 MB", "256 MB", "512 MB", "1 GB"
 };
 static unsigned int FastMem_values[] = {
-	0x000000, 0x100000, 0x200000, 0x400000, 0x800000, 0x1000000, 0x2000000, 0x4000000, 0x8000000, 0x10000000, 0x20000000
+	0x000000, 0x100000, 0x200000, 0x400000, 0x800000, 0x1000000, 0x2000000, 0x4000000, 0x8000000, 0x10000000, 0x20000000, 0x40000000
 };
 static const char* A3000LowMem_list[] = {"None", "8 MB", "16 MB"};
 static unsigned int A3000LowMem_values[] = {0x080000, 0x800000, 0x1000000};
@@ -151,7 +151,10 @@ void InitPanelRAM(const struct _ConfigCategory& category)
 	lblFastsize = new gcn::Label("None   ");
 
 	lblZ3mem = new gcn::Label("Z3 fast:");
-	sldZ3mem = new gcn::Slider(0, 10);
+	if (can_have_1gb())
+		sldZ3mem = new gcn::Slider(0, 11);
+	else
+		sldZ3mem = new gcn::Slider(0, 10);
 	sldZ3mem->setSize(sldWidth, SLIDER_HEIGHT);
 	sldZ3mem->setBaseColor(gui_baseCol);
 	sldZ3mem->setMarkerLength(markerLength);
@@ -302,7 +305,10 @@ void RefreshPanelRAM()
 		}
 	}
 
-	for (i = 0; i < 11; ++i)
+	auto counter = 11;
+	if (can_have_1gb())
+		counter = 12;
+	for (i = 0; i < counter; ++i)
 	{
 		if (changed_prefs.z3fastmem[0].size == FastMem_values[i])
 		{

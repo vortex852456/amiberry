@@ -214,8 +214,6 @@ static void SetControlState(const int model)
 
 static void AdjustPrefs(void)
 {
-	//const auto old_cs = changed_prefs.cs_compatible;
-
 	built_in_prefs(&changed_prefs, quickstart_model, quickstart_conf, 0, 0);
 	switch (quickstart_model)
 	{
@@ -242,8 +240,8 @@ static void AdjustPrefs(void)
 		changed_prefs.floppyslots[1].dfxtype = DRV_NONE;
 		changed_prefs.cdslots[0].inuse = true;
 		changed_prefs.cdslots[0].type = SCSI_UNIT_IMAGE;
-		changed_prefs.gfx_monitor.gfx_size.width = 768;
-		changed_prefs.gfx_monitor.gfx_size.height = 270;
+		changed_prefs.gfx_monitor.gfx_size.width = 720;
+		changed_prefs.gfx_monitor.gfx_size.height = 283;
 		break;
 	default:
 		break;

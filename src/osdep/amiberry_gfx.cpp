@@ -205,16 +205,22 @@ static int display_thread(void *unused)
 			else
 			{
 				if (screen_is_picasso)
+				{
+					width = display_width;
 					height = display_height;
+				}
 				else
+				{
+					width = display_width * 2 >> changed_prefs.gfx_resolution;
 					height = display_height * 2 >> changed_prefs.gfx_vresolution;
+				}
 
 				const auto want_aspect = float(width) / float(height);
 				const auto real_aspect = float(modeInfo.width) / float(modeInfo.height);
 
 				if (want_aspect > real_aspect)
 				{
-					const auto scale = float(modeInfo.width) / float(display_width);
+					const auto scale = float(modeInfo.width) / float(width);
 					viewport.x = 0;
 					viewport.w = modeInfo.width;
 					viewport.h = int(std::ceil(height * scale));
@@ -225,7 +231,7 @@ static int display_thread(void *unused)
 					const auto scale = float(modeInfo.height) / float(height);
 					viewport.y = 0;
 					viewport.h = modeInfo.height;
-					viewport.w = int(std::ceil(display_width * scale));
+					viewport.w = int(std::ceil(width * scale));
 					viewport.x = (modeInfo.width - viewport.w) / 2;
 				}
 
@@ -423,14 +429,15 @@ static void wait_for_display_thread(void)
 }
 #endif
 
-void InitAmigaVidMode(struct uae_prefs* p)
+void allocsoftbuffer(struct uae_prefs* p)
 {
 	/* Initialize structure for Amiga video modes */
 	auto ad = &adisplays;
 	ad->gfxvidinfo.drawbuffer.pixbytes = screen->format->BytesPerPixel;
+	ad->gfxvidinfo.drawbuffer.width_allocated = screen->w;
+	ad->gfxvidinfo.drawbuffer.height_allocated = screen->h;
+	
 	ad->gfxvidinfo.drawbuffer.bufmem = static_cast<uae_u8*>(screen->pixels);
-	ad->gfxvidinfo.drawbuffer.outwidth = p->gfx_monitor.gfx_size.width;
-	ad->gfxvidinfo.drawbuffer.outheight = p->gfx_monitor.gfx_size.height << p->gfx_vresolution;
 	ad->gfxvidinfo.drawbuffer.rowbytes = screen->pitch;
 }
 
@@ -539,6 +546,7 @@ bool isModeAspectRatioExact(SDL_DisplayMode* mode, const int width, const int he
 
 static void open_screen(struct uae_prefs* p)
 {
+	struct vidbuf_description* avidinfo = &adisplays.gfxvidinfo;
 	graphics_subshutdown();
 
 	if (max_uae_width == 0 || max_uae_height == 0)
@@ -555,8 +563,8 @@ static void open_screen(struct uae_prefs* p)
 	
 	if (screen_is_picasso)
 	{
-		display_width = picasso_vidinfo.width ? picasso_vidinfo.width : 640;
-		display_height = picasso_vidinfo.height ? picasso_vidinfo.height : 256;
+		display_width = picasso_vidinfo.width ? picasso_vidinfo.width : 720;
+		display_height = picasso_vidinfo.height ? picasso_vidinfo.height : 283;
 #ifdef USE_DISPMANX
 	//TODO Check if we can implement this in DISPMANX
 #else
@@ -565,9 +573,13 @@ static void open_screen(struct uae_prefs* p)
 	}
 	else
 	{
-		p->gfx_resolution = p->gfx_monitor.gfx_size.width ? (p->gfx_monitor.gfx_size.width > 600 ? 1 : 0) : 1;
-		display_width = p->gfx_monitor.gfx_size.width ? p->gfx_monitor.gfx_size.width : 640;
-		display_height = (p->gfx_monitor.gfx_size.height ? p->gfx_monitor.gfx_size.height : 256) << p->gfx_vresolution;
+		if (currprefs.gfx_resolution > avidinfo->gfx_resolution_reserved)
+			avidinfo->gfx_resolution_reserved = currprefs.gfx_resolution;
+		if (currprefs.gfx_vresolution > avidinfo->gfx_vresolution_reserved)
+			avidinfo->gfx_vresolution_reserved = currprefs.gfx_vresolution;
+		
+		display_width = p->gfx_monitor.gfx_size.width ? p->gfx_monitor.gfx_size.width : 720;
+		display_height = (p->gfx_monitor.gfx_size.height ? p->gfx_monitor.gfx_size.height : 283) << p->gfx_vresolution;
 
 #ifdef USE_DISPMANX
 #else
@@ -620,7 +632,7 @@ static void open_screen(struct uae_prefs* p)
 				if (screen_is_picasso)
 					SDL_SetWindowSize(sdl_window, display_width, display_height);
 				else
-					SDL_SetWindowSize(sdl_window, display_width, display_height * 2 >> p->gfx_vresolution);
+					SDL_SetWindowSize(sdl_window, display_width * 2 >> p->gfx_resolution, display_height * 2 >> p->gfx_vresolution);
 			}	
 	}
 
@@ -654,7 +666,7 @@ static void open_screen(struct uae_prefs* p)
 	if (screen_is_picasso)
 		SDL_RenderSetLogicalSize(renderer, display_width, display_height);
 	else
-		SDL_RenderSetLogicalSize(renderer, display_width, (display_height * 2) >> p->gfx_vresolution);
+		SDL_RenderSetLogicalSize(renderer, display_width * 2 >> p->gfx_resolution, display_height * 2 >> p->gfx_vresolution);
 
 	texture = SDL_CreateTexture(renderer, pixel_format, SDL_TEXTUREACCESS_STREAMING, screen->w, screen->h);
 	check_error_sdl(texture == nullptr, "Unable to create texture");
@@ -663,7 +675,7 @@ static void open_screen(struct uae_prefs* p)
 
 	if (screen != nullptr)
 	{
-		InitAmigaVidMode(p);
+		allocsoftbuffer(p);
 		notice_screen_contents_lost();
 		init_row_map();
 	}
@@ -709,12 +721,10 @@ int check_prefs_changed_gfx()
 		changed = 1;
 	}
 	if (currprefs.leds_on_screen != changed_prefs.leds_on_screen ||
-		currprefs.hide_idle_led != changed_prefs.hide_idle_led || 
-		currprefs.vertical_offset != changed_prefs.vertical_offset)
+		currprefs.hide_idle_led != changed_prefs.hide_idle_led)
 	{
 		currprefs.leds_on_screen = changed_prefs.leds_on_screen;
 		currprefs.hide_idle_led = changed_prefs.hide_idle_led;
-		currprefs.vertical_offset = changed_prefs.vertical_offset;
 		changed = 1;
 	}
 	if (currprefs.chipset_refreshrate != changed_prefs.chipset_refreshrate)
@@ -919,7 +929,7 @@ static void graphics_subinit()
 	else
 	{
 		SDL_ShowCursor(SDL_DISABLE);
-		InitAmigaVidMode(&currprefs);
+		allocsoftbuffer(&currprefs);
 	}
 }
 
@@ -1164,10 +1174,10 @@ bool vsync_switchmode(int hz)
 		{
 		case 200: changed_height = 240; break;
 		case 216: changed_height = 262; break;
-		case 240: changed_height = 270; break;
-		case 256: changed_height = 270; break;
-		case 262: changed_height = 270; break;
-		case 270: changed_height = 270; break;
+		case 240: changed_height = 288; break;
+		case 256: changed_height = 288; break;
+		case 262: changed_height = 288; break;
+		case 288: changed_height = 288; break;
 		default: break;
 		}
 	}
@@ -1181,7 +1191,7 @@ bool vsync_switchmode(int hz)
 		case 240: changed_height = 200; break;
 		case 256: changed_height = 216; break;
 		case 262: changed_height = 216; break;
-		case 270: changed_height = 240; break;
+		case 288: changed_height = 240; break;
 		default: break;
 		}
 	}
