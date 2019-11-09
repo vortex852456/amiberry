@@ -17,7 +17,6 @@
 #include "sounddep/sound.h"
 #include "zfile.h"
 #include "fsdb.h"
-#include "events.h"
 #include "driveclick.h"
 
 static struct drvsample drvs[4][DS_END];
@@ -165,9 +164,6 @@ void driveclick_init(void)
 {
 	int v, vv;
 	TCHAR tmp[MAX_DPATH];
-#ifdef FSUAE
-	write_log("driveclick_init\n");
-#endif
 
 	driveclick_fdrawcmd_detect();
 	driveclick_close();
@@ -495,13 +491,6 @@ void driveclick_motor(int drive, int running)
 
 void driveclick_insert(int drive, int eject)
 {
-#ifdef FSUAE
-	write_log("driveclick_insert drive=%d eject=%d click_initialized=%d "
-		"wave_initialized=%d currprefs.floppyslots[drive].dfxclick=%d\n",
-		drive, eject, click_initialized, wave_initialized,
-		currprefs.floppyslots[drive].dfxclick);
-	drv_has_disk[drive] = !eject;
-#endif
 	if (!click_initialized)
 		return;
 	if (!wave_initialized)
@@ -511,12 +500,8 @@ void driveclick_insert(int drive, int eject)
 	if (eject)
 		drv_has_spun[drive] = 0;
 	if (drv_has_disk[drive] == 0 && !eject)
-		dr_audio_activate();
-#ifdef FSUAE
-
-#else
+		dr_audio_activate ();
 	drv_has_disk[drive] = !eject;
-#endif
 }
 
 void driveclick_check_prefs(void)
