@@ -779,7 +779,7 @@ static int playfield_start_pre, playfield_end_pre;
 static int playfield_start, playfield_end;
 static int real_playfield_start, real_playfield_end;
 static int playfield_diff;
-static int sprite_playfield_start;
+static int sprite_playfield_start, sprite_end;
 static int may_require_hard_way;
 static int linetoscr_diw_start, linetoscr_diw_end;
 static int native_ddf_left, native_ddf_right;
@@ -863,6 +863,7 @@ static void pfield_init_linetoscr (bool border)
 	real_playfield_start = playfield_start;
 	sprite_playfield_start = playfield_start;
 	real_playfield_end = playfield_end;
+	sprite_end = linetoscr_diw_end;
 
 	// Sprite hpos don't include DIW_DDF_OFFSET and can appear 1 lores pixel
 	// before first bitplane pixel appears.
@@ -1228,7 +1229,7 @@ static uae_u8 render_sprites(int pos, int dualpf, uae_u8 apixel, int aga)
 	plfmask = (plf_sprite_mask >> maskshift) >> maskshift;
 	v &= ~plfmask;
 	/* Extra 1 sprite pixel at DDFSTRT is only possible if at least 1 plane is active */
-	if ((bplplanecnt > 0 || pos >= sprite_playfield_start) && (v != 0)) {
+	if ((bplplanecnt > 0 || pos >= sprite_playfield_start) && (pos < sprite_end) && (v != 0)) {
 		unsigned int vlo, vhi, col;
 		unsigned int v1 = v & 255;
 		/* OFFS determines the sprite pair with the highest priority that has
@@ -2699,7 +2700,7 @@ static void pfield_expand_dp_bplcon (void)
 		bplcolorburst_field = 0;
 #ifdef ECS_DENISE
 	int oecsshres = ecsshres;
-	ecsshres = bplres == RES_SUPERHIRES && (currprefs.chipset_mask & CSMASK_ECS_DENISE) && !(currprefs.chipset_mask & CSMASK_AGA);
+	ecsshres = bplres == RES_SUPERHIRES && (currprefs.chipset_mask & CSMASK_ECS_DENISE) && !(currprefs.chipset_mask & CSMASK_AGA) && (dp_for_drawing->bplcon0 & 0x40);
 	pfield_mode_changed = oecsshres != ecsshres;
 #endif
 
