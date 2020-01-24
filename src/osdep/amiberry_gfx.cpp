@@ -41,8 +41,9 @@ static int vsync_modulo = 1;
 #endif
 
 #ifdef USE_LIBGO2
-static go2_display_t* display;
-static go2_presenter_t* presenter;
+go2_display_t* display;
+go2_presenter_t* presenter;
+go2_surface_t* screen;
 #else // normal SDL2
 /* SDL Surface for output of emulation */
 SDL_DisplayMode sdlMode;
@@ -352,6 +353,7 @@ int graphics_setup(void)
 #elif defined (USE_LIBGO2)
 	display = go2_display_create();
     presenter = go2_presenter_create(display, DRM_FORMAT_RGB565, 0xff080808);
+
 	can_have_linedouble = false;
 	host_hz = 60;
 #else
@@ -450,12 +452,19 @@ void allocsoftbuffer(struct uae_prefs* p)
 {
 	/* Initialize structure for Amiga video modes */
 	auto ad = &adisplays;
+#ifdef USE_LIBGO2
+	ad->gfxvidinfo.drawbuffer.pixbytes = 2;
+	ad->gfxvidinfo.drawbuffer.width_allocated = 480;
+	ad->gfxvidinfo.drawbuffer.height_allocated = 320;	
+	ad->gfxvidinfo.drawbuffer.bufmem = static_cast<uae_u8*>(go2_surface_map(screen));
+	ad->gfxvidinfo.drawbuffer.rowbytes = 480 * 2;
+#else
 	ad->gfxvidinfo.drawbuffer.pixbytes = screen->format->BytesPerPixel;
 	ad->gfxvidinfo.drawbuffer.width_allocated = screen->w;
-	ad->gfxvidinfo.drawbuffer.height_allocated = screen->h;
-	
+	ad->gfxvidinfo.drawbuffer.height_allocated = screen->h;	
 	ad->gfxvidinfo.drawbuffer.bufmem = static_cast<uae_u8*>(screen->pixels);
 	ad->gfxvidinfo.drawbuffer.rowbytes = screen->pitch;
+#endif
 }
 
 void graphics_subshutdown()
@@ -465,6 +474,13 @@ void graphics_subshutdown()
 		wait_for_display_thread();
 		write_comm_pipe_u32(display_pipe, DISPLAY_SIGNAL_SUBSHUTDOWN, 1);
 		uae_sem_wait(&display_sem);
+	}
+
+#elif defined (USE_LIBGO2)
+	if (presenter)
+	{
+		go2_presenter_destroy(presenter);
+		presenter = NULL;
 	}
 #else
 
@@ -480,9 +496,14 @@ void graphics_subshutdown()
 		texture = nullptr;
 	}
 #endif
+
 	if (screen)
 	{
+#ifdef USE_LIBGO2
+		go2_surface_destroy(screen);
+#else
 		SDL_FreeSurface(screen);
+#endif
 		screen = nullptr;
 	}
 }
@@ -556,10 +577,12 @@ void update_onscreen()
 
 // Check if the requested Amiga resolution can be displayed with the current Screen mode as a direct multiple
 // Based on this we make the decision to use Linear (smooth) or Nearest Neighbor (pixelated) scaling
+#ifndef USE_LIBGO2
 bool isModeAspectRatioExact(SDL_DisplayMode* mode, const int width, const int height)
 {
 	return mode->w % width == 0 && mode->h % height == 0;
 }
+#endif
 
 static void open_screen(struct uae_prefs* p)
 {
@@ -584,7 +607,7 @@ static void open_screen(struct uae_prefs* p)
 		display_height = picasso_vidinfo.height ? picasso_vidinfo.height : 284;
 #ifdef USE_DISPMANX
 	//TODO Check if we can implement this in DISPMANX
-#else
+#elif !defined (USE_LIBGO2)
 		SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear"); // we always use linear for Picasso96 modes
 #endif
 	}
@@ -599,6 +622,7 @@ static void open_screen(struct uae_prefs* p)
 		display_height = (p->gfx_monitor.gfx_size.height ? p->gfx_monitor.gfx_size.height : 284) << p->gfx_vresolution;
 
 #ifdef USE_DISPMANX
+#elif defined (USE_LIBGO2) // Not needed in this case, libgo2 has its own scaler
 #else
 		if (p->scaling_method == -1)
 		{
@@ -623,6 +647,12 @@ static void open_screen(struct uae_prefs* p)
 	vsync_counter = 0;
 	current_vsync_frame = 2;
 
+#elif defined (USE_LIBGO2)
+	go2_presenter_post(presenter,
+					screen,
+					0, 0, 480, 320,
+					0, 0, 320, 480,
+					GO2_ROTATION_DEGREES_270);
 #else
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0xFF);
 	SDL_RenderClear(renderer);
@@ -702,8 +732,10 @@ void update_display(struct uae_prefs* p)
 {
 	struct amigadisplay *ad = &adisplays;
 	open_screen(p);
+#ifndef USE_LIBGO2
 	SDL_SetRelativeMouseMode(SDL_TRUE);
 	SDL_ShowCursor(SDL_DISABLE);
+#endif
 	ad->framecnt = 1; // Don't draw frame before reset done
 }
 
@@ -785,8 +817,10 @@ int check_prefs_changed_gfx()
 
 int lockscr()
 {
+#ifndef USE_LIBGO2
 	if (screen && SDL_MUSTLOCK(screen))
 		SDL_LockSurface(screen);
+#endif
 	init_row_map();
 	return 1;
 }
@@ -794,8 +828,10 @@ int lockscr()
 
 void unlockscr()
 {
+#ifndef USE_LIBGO2
 	if (screen && SDL_MUSTLOCK(screen))
 		SDL_UnlockSurface(screen);
+#endif
 }
 
 #ifdef USE_DISPMANX
@@ -828,6 +864,7 @@ bool render_screen(bool immediate)
 	return true;
 }
 
+#ifndef USE_LIBGO2
 // All the moving and copying of data, happens here.
 int sdl2_render_thread(void *ptr) {
 	if (texture == NULL || renderer == NULL || screen == NULL) {
@@ -839,6 +876,7 @@ int sdl2_render_thread(void *ptr) {
 	SDL_RenderCopy(renderer, texture, nullptr, nullptr);
 	return 0;
 }
+#endif
 
 void show_screen(int mode)
 {
@@ -901,6 +939,12 @@ void show_screen(int mode)
 #ifdef USE_DISPMANX
 	wait_for_display_thread();
 	write_comm_pipe_u32(display_pipe, DISPLAY_SIGNAL_SHOW, 1);
+#elif defined (USE_LIBGO2)
+	go2_presenter_post(presenter,
+					screen,
+					0, 0, 480, 320,
+					0, 0, 320, 480,
+					GO2_ROTATION_DEGREES_270);
 #else
 	if (use_sdl2_render_thread)
 	{
@@ -946,6 +990,7 @@ bool show_screen_maybe(const bool show)
 
 void black_screen_now()
 {
+#ifndef USE_LIBGO2
 	if (renderthread)
 	{
 		SDL_WaitThread(renderthread, NULL); 
@@ -958,6 +1003,7 @@ void black_screen_now()
 		render_screen(true);
 		show_screen(0);
 	}
+#endif
 }
 
 static void graphics_subinit()
@@ -965,12 +1011,16 @@ static void graphics_subinit()
 	if (screen == nullptr)
 	{
 		open_screen(&currprefs);
+#ifndef USE_LIBGO2
 		if (screen == nullptr)
 			fprintf(stderr, "Unable to set video mode: %s\n", SDL_GetError());
+#endif
 	}
 	else
 	{
+#ifndef USE_LIBGO2
 		SDL_ShowCursor(SDL_DISABLE);
+#endif
 		allocsoftbuffer(&currprefs);
 	}
 }
@@ -982,6 +1032,16 @@ static int alpha;
 static int init_colors()
 {
 	/* Truecolor: */
+#ifdef USE_LIBGO2
+	red_bits = 8;
+	green_bits = 8;
+	blue_bits = 8;
+	red_shift = 0;
+	green_shift = 0;
+	blue_shift = 0;
+	alpha_bits = 0;
+	alpha_shift = 0;
+#else
 	red_bits = bits_in_mask(screen->format->Rmask);
 	green_bits = bits_in_mask(screen->format->Gmask);
 	blue_bits = bits_in_mask(screen->format->Bmask);
@@ -990,6 +1050,7 @@ static int init_colors()
 	blue_shift = mask_shift(screen->format->Bmask);
 	alpha_bits = bits_in_mask(screen->format->Amask);
 	alpha_shift = mask_shift(screen->format->Amask);
+#endif
 
 	alloc_colors64k(red_bits, green_bits, blue_bits, red_shift, green_shift, blue_shift, alpha_bits, alpha_shift, alpha, 0, false);
 	notice_new_xcolors();
@@ -1002,7 +1063,11 @@ static int init_colors()
 */
 static int get_display_depth()
 {
+#ifdef USE_LIBGO2
+	const int depth = 16;
+#else
 	const int depth = screen->format->BytesPerPixel == 4 ? 32 : 16;
+#endif
 	return depth;
 }
 
@@ -1016,7 +1081,7 @@ int GetSurfacePixelFormat()
 		: depth == 15 && unit == 16
 		? RGBFB_R5G5B5
 		: depth == 16 && unit == 16
-		? RGBFB_R5G6B5PC
+		? RGBFB_R5G6B5
 		: unit == 24
 		? RGBFB_R8G8B8
 		: unit == 32
@@ -1053,6 +1118,7 @@ void graphics_leave()
 		display_sem = nullptr;
 	}
 	bcm_host_deinit();
+#elif defined (USE_LIBGO2)
 #else
 	if (texture)
 	{
@@ -1060,7 +1126,20 @@ void graphics_leave()
 		texture = nullptr;
 	}
 #endif
-	
+
+#ifdef USE_LIBGO2
+	if (presenter)
+	{
+		go2_presenter_destroy(presenter);
+		presenter = nullptr;
+	}
+
+	if (display)
+	{
+		go2_display_destroy(display);
+		display = nullptr;
+	}
+#else
 	if (renderer)
 	{
 		SDL_DestroyRenderer(renderer);
@@ -1074,6 +1153,7 @@ void graphics_leave()
 	}
 
 	SDL_VideoQuit();
+#endif
 }
 
 #define  SYSTEM_RED_SHIFT      (screen->format->Rshift)
@@ -1083,6 +1163,12 @@ void graphics_leave()
 #define  SYSTEM_GREEN_MASK     (screen->format->Gmask)
 #define  SYSTEM_BLUE_MASK      (screen->format->Bmask)
 
+#ifdef USE_LIBGO2
+static int save_png(go2_surface_t* surface, const char* filename)
+{
+	return go2_surface_save_as_png(surface, filename);
+}
+#else
 static int save_png(SDL_Surface* surface, char* path)
 {
 	const auto w = surface->w;
@@ -1152,9 +1238,11 @@ static int save_png(SDL_Surface* surface, char* path)
 	fclose(f);
 	return 1;
 }
+#endif
 
 static void create_screenshot()
 {
+#ifndef USE_LIBGO2
 	if (renderthread)
 	{
 		SDL_WaitThread(renderthread, NULL);
@@ -1178,23 +1266,29 @@ static void create_screenshot()
 		screen->format->Bmask,
 		screen->format->Amask);
 	}
+#endif
 }
 
 static int save_thumb(char* path)
 {
+#ifndef USE_LIBGO2
 	if (renderthread)
 	{
 		SDL_WaitThread(renderthread, NULL);
 		renderthread = NULL;
 	}
-
+#endif
 	auto ret = 0;
+#ifdef USE_LIBGO2
+	ret = save_png(screen, path);
+#else
 	if (current_screenshot != nullptr)
 	{
 		ret = save_png(current_screenshot, path);
 		SDL_FreeSurface(current_screenshot);
 		current_screenshot = nullptr;
 	}
+#endif
 	return ret;
 }
 
@@ -1382,7 +1476,7 @@ void picasso_init_resolutions()
 			const auto bit_unit = bitdepth + 1 & 0xF8;
 			const auto rgbFormat = 
 				bitdepth == 8 ? RGBFB_CLUT : 
-			bitdepth == 16 ? RGBFB_R5G6B5PC : RGBFB_R8G8B8A8;
+			bitdepth == 16 ? RGBFB_R5G6B5 : RGBFB_R8G8B8A8;
 			auto pixelFormat = 1 << rgbFormat;
 			pixelFormat |= RGBFF_CHUNKY;
 			DisplayModes[count].res.width = x_size_table[i];
@@ -1414,7 +1508,11 @@ void gfx_set_picasso_state(int on)
 	screen_is_picasso = on;
 	open_screen(&currprefs);
 	if (screen != nullptr)
+#ifdef USE_LIBGO2
+		picasso_vidinfo.rowbytes = 480 * 2;
+#else
 		picasso_vidinfo.rowbytes = screen->pitch;
+#endif
 }
 
 void gfx_set_picasso_modeinfo(uae_u32 w, uae_u32 h, uae_u32 depth, RGBFTYPE rgbfmt)
@@ -1429,19 +1527,33 @@ void gfx_set_picasso_modeinfo(uae_u32 w, uae_u32 h, uae_u32 depth, RGBFTYPE rgbf
 	picasso_vidinfo.selected_rgbformat = rgbfmt;
 	picasso_vidinfo.width = w;
 	picasso_vidinfo.height = h;
+#ifdef USE_LIBGO2
+	picasso_vidinfo.depth = 16;
+#else
 	picasso_vidinfo.depth = screen->format->BitsPerPixel; // Native depth
+#endif
 	picasso_vidinfo.extra_mem = 1;
+#ifdef USE_LIBGO2
+	picasso_vidinfo.rowbytes = 480 * 2;
+	picasso_vidinfo.pixbytes = 2;
+#else
 	picasso_vidinfo.rowbytes = screen->pitch;
 	picasso_vidinfo.pixbytes = screen->format->BytesPerPixel; // Native bytes
+#endif
 	picasso_vidinfo.offset = 0;
 
 	if (screen_is_picasso)
 	{
 		open_screen(&currprefs);
 		if(screen != nullptr) {
+#ifdef USE_LIBGO2
+			picasso_vidinfo.rowbytes = 480 * 2;
+			picasso_vidinfo.rgbformat = RGBFB_R5G6B5;
+#else
 			picasso_vidinfo.rowbytes = screen->pitch;
 			picasso_vidinfo.rgbformat = 
-				screen->format->BytesPerPixel == 4 ? RGBFB_R8G8B8A8 : RGBFB_R5G6B5PC;
+				screen->format->BytesPerPixel == 4 ? RGBFB_R8G8B8A8 : RGBFB_R5G6B5;
+#endif
 		}
 	}
 }
@@ -1455,19 +1567,29 @@ uae_u8* gfx_lock_picasso()
 {
 	if (screen == nullptr || screen_is_picasso == 0)
 		return nullptr;
+#ifndef USE_LIBGO2
 	if (SDL_MUSTLOCK(screen))
 		SDL_LockSurface(screen);
+#endif
 
+#ifdef USE_LIBGO2
+	picasso_vidinfo.pixbytes = 2;
+	picasso_vidinfo.rowbytes = 480 * 2;
+	return static_cast<uae_u8 *>(go2_surface_map(screen));
+#else
 	picasso_vidinfo.pixbytes = screen->format->BytesPerPixel;
 	picasso_vidinfo.rowbytes = screen->pitch;
 	return static_cast<uae_u8 *>(screen->pixels);
+#endif
 }
 
 void gfx_unlock_picasso(const bool dorender)
 {
+#ifndef USE_LIBGO2
 	if (SDL_MUSTLOCK(screen))
 		SDL_UnlockSurface(screen);
-	
+#endif
+
 	if (dorender)
 	{
 		render_screen(true);
