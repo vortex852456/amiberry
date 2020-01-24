@@ -18,6 +18,11 @@
 #include <png.h>
 #include "inputdevice.h"
 
+#ifdef USE_LIBGO2
+#include "display.h"
+#include <drm/drm_fourcc.h>
+#endif
+
 #if 0
 #ifdef ANDROID
 #include <SDL_screenkeyboard.h>
@@ -35,6 +40,10 @@ unsigned long time_per_frame = 20000; // Default for PAL (50 Hz): 20000 microsec
 static int vsync_modulo = 1;
 #endif
 
+#ifdef USE_LIBGO2
+static go2_display_t* display;
+static go2_presenter_t* presenter;
+#else // normal SDL2
 /* SDL Surface for output of emulation */
 SDL_DisplayMode sdlMode;
 SDL_Surface* screen = nullptr;
@@ -42,6 +51,7 @@ SDL_Texture* texture;
 SDL_Thread * renderthread = nullptr;
 SDL_Renderer* renderer;
 const char* sdl_video_driver;
+#endif
 
 #ifdef ANDROID
 #include <android/log.h>
@@ -63,8 +73,9 @@ struct PicassoResolution* DisplayModes;
 struct MultiDisplay Displays[MAX_DISPLAYS];
 
 int screen_is_picasso = 0;
-
+#ifndef USE_LIBGO2
 static SDL_Surface* current_screenshot = nullptr;
+#endif
 static char screenshot_filename_default[MAX_DPATH] =
 {
 	'/', 't', 'm', 'p', '/', 'n', 'u', 'l', 'l', '.', 'p', 'n', 'g', '\0'
@@ -338,7 +349,11 @@ int graphics_setup(void)
 			SDL_WINDOW_FULLSCREEN_DESKTOP);
 		check_error_sdl(sdl_window == nullptr, "Unable to create window");
 	}
-
+#elif defined (USE_LIBGO2)
+	display = go2_display_create();
+    presenter = go2_presenter_create(display, DRM_FORMAT_RGB565, 0xff080808);
+	can_have_linedouble = false;
+	host_hz = 60;
 #else
 	sdl_video_driver = SDL_GetCurrentVideoDriver();
 	Uint32 sdl_window_mode;
@@ -379,6 +394,7 @@ int graphics_setup(void)
 	SDL_ShowCursor(SDL_DISABLE);
 #endif
 	
+#ifndef USE_LIBGO2
 	if (renderer == nullptr)
 	{
 		renderer = SDL_CreateRenderer(sdl_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
@@ -387,7 +403,8 @@ int graphics_setup(void)
 	
 	if (SDL_SetHint(SDL_HINT_GRAB_KEYBOARD, "1") != SDL_TRUE)
 		write_log("SDL could not grab the keyboard");
-	
+#endif
+
 	currprefs.gfx_apmode[1].gfx_refreshrate = host_hz;
 
 #ifdef USE_DISPMANX
@@ -409,7 +426,7 @@ int graphics_setup(void)
 
 void toggle_fullscreen()
 {
-#ifdef USE_DISPMANX
+#if defined (USE_DISPMANX) || defined (USE_LIBGO2)
 #else
 	const Uint32 fullscreen_flag = SDL_WINDOW_FULLSCREEN_DESKTOP;
 	if (sdl_window)

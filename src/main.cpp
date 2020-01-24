@@ -813,7 +813,10 @@ static int real_main2(int argc, TCHAR** argv)
 		| SDL_INIT_HAPTIC
 		| SDL_INIT_GAMECONTROLLER
 		| SDL_INIT_EVENTS) != 0;
-#else
+#elif defined (USE_LIBGO2)
+// No initialization required
+	int ret = 1;
+#else // we use SDL2
 	int ret = SDL_Init(SDL_INIT_EVERYTHING) != 0;
 #endif
 	if (ret < 0)

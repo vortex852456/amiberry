@@ -1,5 +1,7 @@
 #pragma once
+#ifndef USE_LIBGO2
 #include <SDL.h>
+#endif
 
 #ifdef USE_DISPMANX
 #include <bcm_host.h>
@@ -17,18 +19,27 @@ extern VC_RECT_T dst_rect;
 extern VC_RECT_T blit_rect;
 extern VC_RECT_T black_rect;
 extern VC_IMAGE_TYPE_T rgb_mode;
-#else
+#elif !defined (USE_LIBGO2)
 extern SDL_Texture* texture;
 extern SDL_Cursor* cursor;
 extern SDL_Texture* gui_texture;
 extern SDL_DisplayMode sdlMode;
 extern const char* sdl_video_driver;
 #endif
+
+#ifdef USE_LIBGO2
+extern go2_display_t* display;
+extern go2_presenter_t* presenter;
+extern go2_surface_t* gui_surface;
+#else
 extern SDL_Renderer* renderer;
 extern SDL_Window* sdl_window;
 extern SDL_Surface* gui_screen;
+#endif
 
 extern bool can_have_linedouble;
 extern bool use_sdl2_render_thread;
+#ifndef USE_LIBGO2
 extern void check_error_sdl(bool check, const char* message);
+#endif
 extern void toggle_fullscreen();

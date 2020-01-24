@@ -180,7 +180,9 @@ extern void to_upper (TCHAR *s, int len);
 #define abort() \
   do { \
     printf ("Internal error; file %s, line %d\n", __FILE__, __LINE__); \
+#ifndef USE_LIBGO2
     SDL_Quit(); \
+#endif
     (abort) (); \
 } while (0)
 #else
@@ -220,7 +222,9 @@ extern void to_upper (TCHAR *s, int len);
 #define abort() \
   do { \
     printf ("Internal error; file %s, line %d\n", __FILE__, __LINE__); \
+#ifndef USE_LIBGO2
     SDL_Quit(); \
+#endif
     (abort) (); \
 } while (0)
 
