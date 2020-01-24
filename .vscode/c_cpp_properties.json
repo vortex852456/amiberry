@@ -1,0 +1,70 @@
+{
+    "configurations": [
+        {
+            "name": "Linux 64-bit",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "src",
+                "src/osdep",
+                "src/threaddep",
+                "src/include",
+                "src/archivers",
+                "/usr/include/SDL2",
+                "/usr/include/libxml2"
+            ],
+            "defines": [
+                "AMIBERRY",
+                "_REENTRANT",
+                "CPU_AARCH64",
+                "_FILE_OFFSET_BITS=64",
+                "SOFTWARE_CURSOR",
+                "FASTERCYCLES",
+                "__aarch64__"
+            ],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-x64",
+            "compilerArgs": [
+                "-Ofast",
+                "-pipe",
+                "-Wno-shift-overflow",
+                "-Wno-narrowing"
+            ]
+        },
+        {
+            "name": "Odroid Go Advance (64-bit)",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "src",
+                "src/osdep",
+                "src/threaddep",
+                "src/include",
+                "src/archivers",
+                "/usr/include/libxml2",
+                "external/libgo2/src"
+            ],
+            "defines": [
+                "AMIBERRY",
+                "_REENTRANT",
+                "CPU_AARCH64",
+                "_FILE_OFFSET_BITS=64",
+                "SOFTWARE_CURSOR",
+                "FASTERCYCLES",
+                "USE_LIBGO2",
+                "__aarch64__"
+            ],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-x64",
+            "compilerArgs": [
+                "-Ofast",
+                "-pipe",
+                "-Wno-shift-overflow",
+                "-Wno-narrowing"
+            ]
+        }
+    ],
+    "version": 4
+}
