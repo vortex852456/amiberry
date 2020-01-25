@@ -1,7 +1,5 @@
 #pragma once
-#ifndef USE_LIBGO2
 #include <SDL.h>
-#endif
 
 #ifdef USE_DISPMANX
 #include <bcm_host.h>
@@ -39,7 +37,5 @@ extern SDL_Surface* gui_screen;
 
 extern bool can_have_linedouble;
 extern bool use_sdl2_render_thread;
-#ifndef USE_LIBGO2
 extern void check_error_sdl(bool check, const char* message);
-#endif
 extern void toggle_fullscreen();

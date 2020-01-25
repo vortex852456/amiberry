@@ -5,9 +5,7 @@
   */
 
 #pragma once
-#ifndef USE_LIBGO2
 #include <SDL.h>
-#endif
 
 #define TARGET_NAME _T("amiberry")
 
