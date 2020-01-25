@@ -177,17 +177,23 @@ extern void to_upper (TCHAR *s, int len);
 #define ENUMNAME(name) name
 
 /* While we're here, make abort more useful.  */
+#ifdef USE_LIBGO2
 #define abort() \
   do { \
     printf ("Internal error; file %s, line %d\n", __FILE__, __LINE__); \
-#ifndef USE_LIBGO2
+    (abort) (); \
+} while (0)
+#elif !defined(USE_LIBGO2)
+#define abort() \
+  do { \
+    printf ("Internal error; file %s, line %d\n", __FILE__, __LINE__); \
     SDL_Quit(); \
-#endif
     (abort) (); \
 } while (0)
 #else
 #define ENUMDECL enum
 #define ENUMNAME(name) ; typedef int name
+#endif
 #endif
 
 /*
@@ -218,15 +224,6 @@ extern void to_upper (TCHAR *s, int len);
 #define REGPARAM2
 #define REGPARAM3 
 #define REGPARAM
-
-#define abort() \
-  do { \
-    printf ("Internal error; file %s, line %d\n", __FILE__, __LINE__); \
-#ifndef USE_LIBGO2
-    SDL_Quit(); \
-#endif
-    (abort) (); \
-} while (0)
 
 #endif
 
