@@ -873,7 +873,7 @@ int sdl2_render_thread(void *ptr) {
 
 	SDL_UpdateTexture(texture, nullptr, screen->pixels, screen->pitch);
 	SDL_RenderClear(renderer);
-	SDL_RenderCopy(renderer, texture, nullptr, nullptr);
+	SDL_RenderCopyEx(renderer, texture, nullptr, nullptr, rotation_angle, nullptr, SDL_FLIP_NONE);
 	return 0;
 }
 #endif
@@ -960,7 +960,7 @@ void show_screen(int mode)
 	{
 		SDL_UpdateTexture(texture, nullptr, screen->pixels, screen->pitch);
 		SDL_RenderClear(renderer);
-		SDL_RenderCopy(renderer, texture, nullptr, nullptr);
+		SDL_RenderCopyEx(renderer, texture, nullptr, nullptr, rotation_angle, nullptr, SDL_FLIP_NONE);
 		SDL_RenderPresent(renderer);
 	}
 #endif
