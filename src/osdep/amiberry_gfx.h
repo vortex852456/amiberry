@@ -26,6 +26,7 @@ extern const char* sdl_video_driver;
 #endif
 
 #ifdef USE_LIBGO2
+#include "display.h"
 extern go2_display_t* display;
 extern go2_presenter_t* presenter;
 extern go2_surface_t* gui_surface;
