@@ -353,7 +353,7 @@ int graphics_setup(void)
 #elif defined (USE_LIBGO2)
 	display = go2_display_create();
     presenter = go2_presenter_create(display, DRM_FORMAT_RGB565, 0xff080808);
-
+	screen = go2_surface_create(display, display_width, display_height, DRM_FORMAT_RGB565);
 	can_have_linedouble = false;
 	host_hz = 60;
 #else
