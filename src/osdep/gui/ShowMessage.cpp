@@ -146,7 +146,7 @@ static void ShowMessageWaitInputLoop()
 			uae_gui->logic();
 			// Now we let the Gui object draw itself.
 			uae_gui->draw();
-#ifdef USE_DISPMANX
+#if defined (USE_DISPMANX) || defined (USE_LIBGO2)
 			UpdateGuiScreen();
 #else
 			SDL_UpdateTexture(gui_texture, nullptr, gui_screen->pixels, gui_screen->pitch);
@@ -286,7 +286,7 @@ static void ShowMessageLoop()
 			uae_gui->logic();
 			// Now we let the Gui object draw itself.
 			uae_gui->draw();
-#ifdef USE_DISPMANX
+#if defined (USE_DISPMANX) || defined (USE_LIBGO2)
 			UpdateGuiScreen();
 #else
 			SDL_UpdateTexture(gui_texture, nullptr, gui_screen->pixels, gui_screen->pitch);
@@ -319,7 +319,7 @@ bool ShowMessage(const char* title, const char* line1, const char* line2, const 
 	// Prepare the screen once
 	uae_gui->logic();
 	uae_gui->draw();
-#ifdef USE_DISPMANX
+#if defined (USE_DISPMANX) || defined (USE_LIBGO2)
 #else
 	SDL_UpdateTexture(gui_texture, nullptr, gui_screen->pixels, gui_screen->pitch);
 #endif
@@ -346,7 +346,7 @@ const char* ShowMessageForInput(const char* title, const char* line1, const char
 	// Prepare the screen once
 	uae_gui->logic();
 	uae_gui->draw();
-#ifdef USE_DISPMANX
+#if defined (USE_DISPMANX) || defined (USE_LIBGO2)
 #else
 	SDL_UpdateTexture(gui_texture, nullptr, gui_screen->pixels, gui_screen->pitch);
 #endif
