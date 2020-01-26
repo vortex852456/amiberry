@@ -357,10 +357,11 @@ int graphics_setup(void)
 	can_have_linedouble = false;
 	host_hz = 60;
 #else
+	write_log("Trying to get Current Video Driver...\n");
 	sdl_video_driver = SDL_GetCurrentVideoDriver();
 	Uint32 sdl_window_mode;
 
-	if (strcmp(sdl_video_driver,"x11") == 0)
+	if (sdl_video_driver != nullptr && strcmp(sdl_video_driver,"x11") == 0)
 	{
 		// Only enable Windowed mode if we're running under x11
 		sdl_window_mode = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
@@ -371,6 +372,8 @@ int graphics_setup(void)
 		sdl_window_mode = SDL_WINDOW_FULLSCREEN_DESKTOP;
 	}
 
+	write_log("Trying to create window...\n");
+	
 	if (sdl_window == nullptr)
 	{
 		sdl_window = SDL_CreateWindow("Amiberry",
