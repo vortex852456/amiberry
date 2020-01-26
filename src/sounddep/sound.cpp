@@ -228,12 +228,8 @@ int setup_sound()
 static int open_sound()
 {
 	config_changed = 1;
-#ifdef USE_LIBGO2
-	go2_audio_create(currprefs.sound_freq);
-#else
 	if (start_sound(currprefs.sound_freq, 16, currprefs.sound_stereo) != 0)
 		return 0;
-#endif
 	
 	have_sound = 1;
 	sound_available = 1;
