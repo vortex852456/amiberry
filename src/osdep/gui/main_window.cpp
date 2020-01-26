@@ -120,15 +120,21 @@ enum
 * SDL Stuff we need
 */
 SDL_Joystick* gui_joystick;
-SDL_Surface* gui_screen;
 SDL_Event gui_event;
 SDL_Event touch_event;
 SDL_Window* sdl_window;
+#ifndef USE_LIBGO2
+SDL_Surface* gui_screen;
+#endif
 #ifdef USE_DISPMANX
 DISPMANX_RESOURCE_HANDLE_T gui_resource;
 DISPMANX_RESOURCE_HANDLE_T black_gui_resource;
 DISPMANX_ELEMENT_HANDLE_T gui_element;
 int element_present = 0;
+#elif defined (USE_LIBGO2)
+go2_display_t* gui_display;
+go2_presenter_t* gui_presenter;
+go2_surface_t* gui_screen;
 #else
 SDL_Texture* gui_texture;
 SDL_Cursor* cursor;
@@ -272,6 +278,12 @@ void UpdateGuiScreen()
 	updateHandle = vc_dispmanx_update_start(0);
 	vc_dispmanx_element_change_source(updateHandle, gui_element, gui_resource);
 	vc_dispmanx_update_submit_sync(updateHandle);
+#elif defined (USE_LIBGO2)
+	go2_presenter_post(gui_presenter,
+		gui_screen,
+		0, 0, 480, 320,
+		0, 0, 320, 480,
+		GO2_ROTATION_DEGREES_270);
 #else
 	SDL_RenderClear(renderer);
 	SDL_RenderCopyEx(renderer, gui_texture, nullptr, nullptr, rotation_angle, nullptr, SDL_FLIP_NONE);
@@ -282,7 +294,7 @@ void UpdateGuiScreen()
 #endif
 }
 
-#ifdef USE_DISPMANX
+#if defined (USE_DISPMANX) || defined (USE_LIBGO2)
 #else
 // Sets the cursor image up
 void setup_cursor()
@@ -330,10 +342,19 @@ void amiberry_gui_init()
 	//-------------------------------------------------
 	// Create new screen for GUI
 	//-------------------------------------------------
+#ifdef USE_LIBGO2
+	gui_display = go2_display_create();
+	gui_presenter = go2_presenter_create(gui_display, DRM_FORMAT_RGB565, 0xff080808);
+	
+	if (!gui_screen)
+		gui_screen = go2_surface_create(gui_display, GUI_WIDTH, GUI_HEIGHT, DRM_FORMAT_RGB565);
+	
+#else
 	if (!gui_screen)
 		gui_screen = SDL_CreateRGBSurface(0, GUI_WIDTH, GUI_HEIGHT, 16, 0, 0, 0, 0);
 	check_error_sdl(gui_screen == nullptr, "Unable to create GUI surface:");
-
+#endif
+	
 #ifdef USE_DISPMANX
 	displayHandle = vc_dispmanx_display_open(0);
 	rgb_mode = VC_IMAGE_RGB565;
@@ -402,9 +423,12 @@ void amiberry_gui_init()
 	mscalex = (double(GUI_WIDTH) / double(physmode.w));
 	mscaley = (double(GUI_HEIGHT) / double(physmode.h));
 #else
+#ifndef USE_LIBGO2
 	setup_cursor();
 #endif
+#endif
 
+#ifndef USE_LIBGO2
 	if (sdl_window && strcmp(sdl_video_driver, "x11") == 0)
 	{
 		// Only resize the window if we're under x11, otherwise we're fullscreen anyway
@@ -419,10 +443,14 @@ void amiberry_gui_init()
 	                                gui_screen->h);
 	check_error_sdl(gui_texture == nullptr, "Unable to create GUI texture:");
 #endif
+#endif
+
+#ifndef USE_LIBGO2
 	SDL_RenderSetLogicalSize(renderer, GUI_WIDTH, GUI_HEIGHT);
 	SDL_ShowCursor(SDL_ENABLE);
 	SDL_SetRelativeMouseMode(SDL_FALSE);
-
+#endif
+	
 	//-------------------------------------------------
 	// Create helpers for GUI framework
 	//-------------------------------------------------
@@ -451,7 +479,11 @@ void amiberry_gui_halt()
 
 	if (gui_screen != nullptr)
 	{
+#ifdef USE_LIBGO2
+		go2_surface_destroy(gui_screen);
+#else
 		SDL_FreeSurface(gui_screen);
+#endif
 		gui_screen = nullptr;
 	}
 #ifdef USE_DISPMANX
@@ -479,6 +511,17 @@ void amiberry_gui_halt()
 	}
 	if (displayHandle)
 		vc_dispmanx_display_close(displayHandle);
+#elif defined (USE_LIBGO2)
+	if (gui_presenter)
+	{
+		go2_presenter_destroy(gui_presenter);
+		presenter = NULL;
+	}
+	if (gui_display)
+	{
+		go2_display_destroy(gui_display);
+		gui_display = nullptr;
+	}
 #else
 	if (gui_texture != nullptr)
 	{
@@ -804,7 +847,7 @@ void checkInput()
 		uae_gui->logic();
 		// Now we let the Gui object draw itself.
 		uae_gui->draw();
-#ifdef USE_DISPMANX
+#if defined (USE_DISPMANX) || defined (USE_LIBGO2)
 #else
 		SDL_UpdateTexture(gui_texture, nullptr, gui_screen->pixels, gui_screen->pitch);
 #endif
