@@ -831,15 +831,13 @@ void check_error_sdl(const bool check, const char* message)
 
 static int real_main2(int argc, TCHAR** argv)
 {
-#ifdef USE_DISPMANX
+#if defined (USE_DISPMANX) || defined (USE_LIBGO2)
 	int ret = SDL_Init(SDL_INIT_TIMER
 		| SDL_INIT_AUDIO
 		| SDL_INIT_JOYSTICK
 		| SDL_INIT_HAPTIC
 		| SDL_INIT_GAMECONTROLLER
 		| SDL_INIT_EVENTS) != 0;
-#elif defined (USE_LIBGO2)
-	int ret = SDL_Init(SDL_INIT_EVENTS);
 #else // we use SDL2
 	int ret = SDL_Init(SDL_INIT_EVERYTHING) != 0;
 #endif
