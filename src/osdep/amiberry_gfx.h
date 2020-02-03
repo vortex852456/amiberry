@@ -34,6 +34,7 @@ extern go2_surface_t* gui_surface;
 extern SDL_Renderer* renderer;
 extern SDL_Window* sdl_window;
 extern SDL_Surface* gui_screen;
+extern SDL_Rect renderQuad;
 extern int rotation_angle;
 #endif
 
