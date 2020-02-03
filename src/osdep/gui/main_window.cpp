@@ -286,7 +286,11 @@ void UpdateGuiScreen()
 		GO2_ROTATION_DEGREES_270);
 #else
 	SDL_RenderClear(renderer);
-	SDL_RenderCopyEx(renderer, gui_texture, nullptr, nullptr, rotation_angle, nullptr, SDL_FLIP_NONE);
+	if (rotation_angle == 0 || rotation_angle == 180)
+		renderQuad = { 0, 0, gui_screen->w, gui_screen->h };
+	else
+		renderQuad = { -(GUI_WIDTH - GUI_HEIGHT) / 2, (GUI_WIDTH - GUI_HEIGHT) / 2, gui_screen->w, gui_screen->h };
+	SDL_RenderCopyEx(renderer, gui_texture, nullptr, &renderQuad, rotation_angle, nullptr, SDL_FLIP_NONE);
 #ifdef SOFTWARE_CURSOR
 	swcursor(true);
 #endif
@@ -351,7 +355,9 @@ void amiberry_gui_init()
 	
 #else
 	if (!gui_screen)
+	{
 		gui_screen = SDL_CreateRGBSurface(0, GUI_WIDTH, GUI_HEIGHT, 16, 0, 0, 0, 0);
+	}
 	check_error_sdl(gui_screen == nullptr, "Unable to create GUI surface:");
 #endif
 	
@@ -431,9 +437,8 @@ void amiberry_gui_init()
 #ifndef USE_LIBGO2
 	if (sdl_window && strcmp(sdl_video_driver, "x11") == 0)
 	{
-		// Only resize the window if we're under x11, otherwise we're fullscreen anyway
-		if ((SDL_GetWindowFlags(sdl_window) & SDL_WINDOW_MAXIMIZED) == 0)
-			SDL_SetWindowSize(sdl_window, GUI_WIDTH, GUI_HEIGHT);
+		if (rotation_angle != 0 && rotation_angle != 180)
+			SDL_SetWindowSize(sdl_window, GUI_HEIGHT, GUI_WIDTH);
 	}
 
 	// make the scaled rendering look smoother (linear scaling).
