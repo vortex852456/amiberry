@@ -435,7 +435,7 @@ void amiberry_gui_init()
 #endif
 
 #ifndef USE_LIBGO2
-	if (sdl_window && strcmp(sdl_video_driver, "x11") == 0)
+	if (sdl_window)
 	{
 		if (rotation_angle != 0 && rotation_angle != 180)
 			SDL_SetWindowSize(sdl_window, GUI_HEIGHT, GUI_WIDTH);
@@ -451,7 +451,11 @@ void amiberry_gui_init()
 #endif
 
 #ifndef USE_LIBGO2
-	SDL_RenderSetLogicalSize(renderer, GUI_WIDTH, GUI_HEIGHT);
+	if (rotation_angle == 0 || rotation_angle == 180)
+		SDL_RenderSetLogicalSize(renderer, GUI_WIDTH, GUI_HEIGHT);
+	else
+		SDL_RenderSetLogicalSize(renderer, GUI_HEIGHT, GUI_WIDTH);
+	
 	SDL_ShowCursor(SDL_ENABLE);
 	SDL_SetRelativeMouseMode(SDL_FALSE);
 #endif
