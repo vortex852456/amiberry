@@ -123,10 +123,8 @@ SDL_Joystick* gui_joystick;
 SDL_Event gui_event;
 SDL_Event touch_event;
 SDL_Window* sdl_window;
-#ifndef USE_LIBGO2
 SDL_Surface* gui_screen;
-#endif
-#ifdef USE_DISPMANX
+#if defined (USE_DISPMANX)
 DISPMANX_RESOURCE_HANDLE_T gui_resource;
 DISPMANX_RESOURCE_HANDLE_T black_gui_resource;
 DISPMANX_ELEMENT_HANDLE_T gui_element;
@@ -134,7 +132,7 @@ int element_present = 0;
 #elif defined (USE_LIBGO2)
 go2_display_t* gui_display;
 go2_presenter_t* gui_presenter;
-go2_surface_t* gui_screen;
+go2_surface_t* go2_gui_screen;
 #else
 SDL_Texture* gui_texture;
 SDL_Cursor* cursor;
