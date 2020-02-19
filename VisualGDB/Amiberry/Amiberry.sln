@@ -18,6 +18,9 @@ Global
 		Debug-dispmanx|VisualGDB = Debug-dispmanx|VisualGDB
 		Debug-dispmanx|x64 = Debug-dispmanx|x64
 		Debug-dispmanx|x86 = Debug-dispmanx|x86
+		Debug-libgo2|VisualGDB = Debug-libgo2|VisualGDB
+		Debug-libgo2|x64 = Debug-libgo2|x64
+		Debug-libgo2|x86 = Debug-libgo2|x86
 		Release|VisualGDB = Release|VisualGDB
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
@@ -34,6 +37,12 @@ Global
 		{FDC6BF55-C4BC-44FB-85A9-3369784716E8}.Debug-dispmanx|VisualGDB.Build.0 = Debug-dispmanx|VisualGDB
 		{FDC6BF55-C4BC-44FB-85A9-3369784716E8}.Debug-dispmanx|x64.ActiveCfg = Debug-dispmanx|VisualGDB
 		{FDC6BF55-C4BC-44FB-85A9-3369784716E8}.Debug-dispmanx|x86.ActiveCfg = Debug-dispmanx|VisualGDB
+		{FDC6BF55-C4BC-44FB-85A9-3369784716E8}.Debug-libgo2|VisualGDB.ActiveCfg = Debug-libgo2|VisualGDB
+		{FDC6BF55-C4BC-44FB-85A9-3369784716E8}.Debug-libgo2|VisualGDB.Build.0 = Debug-libgo2|VisualGDB
+		{FDC6BF55-C4BC-44FB-85A9-3369784716E8}.Debug-libgo2|x64.ActiveCfg = Debug-libgo2|VisualGDB
+		{FDC6BF55-C4BC-44FB-85A9-3369784716E8}.Debug-libgo2|x64.Build.0 = Debug-libgo2|VisualGDB
+		{FDC6BF55-C4BC-44FB-85A9-3369784716E8}.Debug-libgo2|x86.ActiveCfg = Debug-libgo2|VisualGDB
+		{FDC6BF55-C4BC-44FB-85A9-3369784716E8}.Debug-libgo2|x86.Build.0 = Debug-libgo2|VisualGDB
 		{FDC6BF55-C4BC-44FB-85A9-3369784716E8}.Release|VisualGDB.ActiveCfg = Release|VisualGDB
 		{FDC6BF55-C4BC-44FB-85A9-3369784716E8}.Release|VisualGDB.Build.0 = Release|VisualGDB
 		{FDC6BF55-C4BC-44FB-85A9-3369784716E8}.Release|x64.ActiveCfg = Release|VisualGDB
@@ -52,6 +61,12 @@ Global
 		{E613050D-EE8C-4ED1-936D-EB9E0E155EA6}.Debug-dispmanx|x64.Build.0 = Release|VisualGDB
 		{E613050D-EE8C-4ED1-936D-EB9E0E155EA6}.Debug-dispmanx|x86.ActiveCfg = Release|VisualGDB
 		{E613050D-EE8C-4ED1-936D-EB9E0E155EA6}.Debug-dispmanx|x86.Build.0 = Release|VisualGDB
+		{E613050D-EE8C-4ED1-936D-EB9E0E155EA6}.Debug-libgo2|VisualGDB.ActiveCfg = Debug|VisualGDB
+		{E613050D-EE8C-4ED1-936D-EB9E0E155EA6}.Debug-libgo2|VisualGDB.Build.0 = Debug|VisualGDB
+		{E613050D-EE8C-4ED1-936D-EB9E0E155EA6}.Debug-libgo2|x64.ActiveCfg = Release|VisualGDB
+		{E613050D-EE8C-4ED1-936D-EB9E0E155EA6}.Debug-libgo2|x64.Build.0 = Release|VisualGDB
+		{E613050D-EE8C-4ED1-936D-EB9E0E155EA6}.Debug-libgo2|x86.ActiveCfg = Release|VisualGDB
+		{E613050D-EE8C-4ED1-936D-EB9E0E155EA6}.Debug-libgo2|x86.Build.0 = Release|VisualGDB
 		{E613050D-EE8C-4ED1-936D-EB9E0E155EA6}.Release|VisualGDB.ActiveCfg = Release|VisualGDB
 		{E613050D-EE8C-4ED1-936D-EB9E0E155EA6}.Release|VisualGDB.Build.0 = Release|VisualGDB
 		{E613050D-EE8C-4ED1-936D-EB9E0E155EA6}.Release|x64.ActiveCfg = Release|VisualGDB

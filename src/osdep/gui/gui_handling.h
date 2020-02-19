@@ -36,7 +36,9 @@ extern gcn::Container* gui_top;
 extern gcn::Color gui_baseCol;
 extern gcn::Color colTextboxBackground;
 extern gcn::SDLInput* gui_input;
+#ifndef USE_LIBGO2
 extern SDL_Surface* gui_screen;
+#endif
 extern SDL_Joystick* gui_joystick;
 extern gcn::SDLGraphics* gui_graphics;
 extern bool gui_joystick_control;
