@@ -827,11 +827,9 @@ int check_prefs_changed_gfx()
 		return 1;
 	}
 	
-	if (currprefs.leds_on_screen != changed_prefs.leds_on_screen ||
-		currprefs.hide_idle_led != changed_prefs.hide_idle_led)
+	if (currprefs.leds_on_screen != changed_prefs.leds_on_screen)
 	{
 		currprefs.leds_on_screen = changed_prefs.leds_on_screen;
-		currprefs.hide_idle_led = changed_prefs.hide_idle_led;
 		changed = 1;
 	}
 	if (currprefs.chipset_refreshrate != changed_prefs.chipset_refreshrate)
@@ -1330,42 +1328,10 @@ static int save_thumb(char* path)
 static int currVSyncRate = 0;
 bool vsync_switchmode(int hz)
 {
-	struct amigadisplay* ad = &adisplays;
-	auto changed_height = changed_prefs.gfx_monitor.gfx_size.height;
-
 	if (hz >= 55)
 		hz = 60;
 	else
 		hz = 50;
-
-	if (hz == 50 && currVSyncRate == 60)
-	{
-		// Switch from NTSC -> PAL
-		switch (changed_height)
-		{
-		case 200: changed_height = 240; break;
-		case 216: changed_height = 262; break;
-		case 240: changed_height = 288; break;
-		case 256: changed_height = 288; break;
-		case 262: changed_height = 288; break;
-		case 288: changed_height = 288; break;
-		default: break;
-		}
-	}
-	else if (hz == 60 && currVSyncRate == 50)
-	{
-		// Switch from PAL -> NTSC
-		switch (changed_height)
-		{
-		case 200: changed_height = 200; break;
-		case 216: changed_height = 200; break;
-		case 240: changed_height = 200; break;
-		case 256: changed_height = 216; break;
-		case 262: changed_height = 216; break;
-		case 288: changed_height = 240; break;
-		default: break;
-		}
-	}
 
 	if (hz != currVSyncRate)
 	{
@@ -1382,9 +1348,6 @@ bool vsync_switchmode(int hz)
 			vsync_modulo = 5; // Amiga draws 5 frames while host has 6 vsyncs -> sync every 5th Amiga frame
 #endif
 	}
-
-	if (!ad->picasso_on && !ad->picasso_requested_on)
-		changed_prefs.gfx_monitor.gfx_size.height = changed_height;
 
 	return true;
 }
@@ -1633,3 +1596,8 @@ void gfx_unlock_picasso(const bool dorender)
 }
 
 #endif // PICASSO96
+
+float target_getcurrentvblankrate()
+{
+	return static_cast<float>(host_hz);
+}
