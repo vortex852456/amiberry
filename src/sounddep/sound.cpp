@@ -170,7 +170,7 @@ void finish_sound_buffer()
 {
 #ifdef DRIVESOUND
 	// driveclick_mix ((uae_s16*)paula_sndbuffer, paula_sndbufsize / 2, currprefs.dfxclickchannelmask);
-	driveclick_mix((uae_s16*)sndbuffer[0], SNDBUFFER_LEN / 2, currprefs.dfxclickchannelmask);
+	driveclick_mix((uae_s16*)sndbuffer, SNDBUFFER_LEN / 2, currprefs.dfxclickchannelmask);
 #endif
 	wrcnt++;
 	sndbufpt = render_sndbuff = sndbuffer[wrcnt & SOUND_BUFFERS_COUNT - 1];
