@@ -22,8 +22,8 @@
 #define GETBDM(x) (((x) - (((x) / 10000) * 10000)) / 100)
 #define GETBDD(x) ((x) % 100)
 
-#define AMIBERRYVERSION _T("Amiberry v3.1.0 (2020-02-01)")
-#define AMIBERRYDATE MAKEBD(2020, 02, 01)
+#define AMIBERRYVERSION _T("Amiberry v3.1.2 (2020-02-18)")
+#define AMIBERRYDATE MAKEBD(2020, 02, 18)
 
 extern std::string get_version_string();
 
@@ -103,7 +103,7 @@ extern std::vector<std::string> lstMRUCDList;
 extern void AddFileToCDList(const char *file, int moveToTop);
 
 #define AMIGAWIDTH_COUNT 6
-#define AMIGAHEIGHT_COUNT 6
+#define AMIGAHEIGHT_COUNT 7
 extern const int amigawidth_values[AMIGAWIDTH_COUNT];
 extern const int amigaheight_values[AMIGAHEIGHT_COUNT];
 

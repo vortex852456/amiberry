@@ -216,21 +216,6 @@ void RegisterRefreshFunc(void (*func)(void))
 	refreshFuncAfterDraw = func;
 }
 
-void FocusBugWorkaround(gcn::Window* wnd)
-{
-	// When modal dialog opens via mouse, the dialog will not
-	// have the focus unless there is a mouse click. We simulate the click...
-	SDL_Event event;
-	event.type = SDL_MOUSEBUTTONDOWN;
-	event.button.button = SDL_BUTTON_LEFT;
-	event.button.state = SDL_PRESSED;
-	event.button.x = wnd->getX() + 2;
-	event.button.y = wnd->getY() + 2;
-	gui_input->pushInput(event);
-	event.type = SDL_MOUSEBUTTONUP;
-	gui_input->pushInput(event);
-}
-
 static void ShowHelpRequested()
 {
 	vector<string> helptext;
@@ -269,6 +254,16 @@ void swcursor(bool op) {
 }
 #endif
 
+void cap_fps(Uint64 start, int fps)
+{
+	const auto end = SDL_GetPerformanceCounter();
+	const auto elapsed_ms = float(end - start) / float(SDL_GetPerformanceFrequency()) * 1000.0f;
+	if (fps == 60)
+		SDL_Delay(floor(16.666f - elapsed_ms));
+	else if (fps == 50)
+		SDL_Delay(floor(20.000f - elapsed_ms));
+}
+
 void UpdateGuiScreen()
 {
 #ifdef USE_DISPMANX
@@ -283,11 +278,12 @@ void UpdateGuiScreen()
 		0, 0, 320, 480,
 		GO2_ROTATION_DEGREES_270);
 #else
-	SDL_RenderClear(renderer);
+	SDL_UpdateTexture(gui_texture, nullptr, gui_screen->pixels, gui_screen->pitch);
 	if (rotation_angle == 0 || rotation_angle == 180)
 		renderQuad = { 0, 0, gui_screen->w, gui_screen->h };
 	else
 		renderQuad = { -(GUI_WIDTH - GUI_HEIGHT) / 2, (GUI_WIDTH - GUI_HEIGHT) / 2, gui_screen->w, gui_screen->h };
+	
 	SDL_RenderCopyEx(renderer, gui_texture, nullptr, &renderQuad, rotation_angle, nullptr, SDL_FLIP_NONE);
 #ifdef SOFTWARE_CURSOR
 	swcursor(true);
@@ -577,12 +573,13 @@ void checkInput()
 {
 	const auto key_for_gui = SDL_GetKeyFromName(currprefs.open_gui);
 	int gotEvent = 0;
+	
 	while (SDL_PollEvent(&gui_event))
 	{
-		gotEvent = 1;
 		switch (gui_event.type)
 		{
 		case SDL_QUIT:
+			gotEvent = 1;
 			//-------------------------------------------------
 			// Quit entire program via SQL-Quit
 			//-------------------------------------------------
@@ -594,6 +591,7 @@ void checkInput()
 		case SDL_JOYBUTTONDOWN:
 			if (gui_joystick)
 			{
+				gotEvent = 1;
 				const int hat = SDL_JoystickGetHat(gui_joystick, 0);
 
 				if (SDL_JoystickGetButton(gui_joystick, host_input_buttons[0].dpad_up) || hat & SDL_HAT_UP) // dpad
@@ -667,13 +665,15 @@ void checkInput()
 			}
 			break;
 
-		case SDL_JOYAXISMOTION:
+		case SDL_CONTROLLER_AXIS_LEFTX:
+		case SDL_CONTROLLER_AXIS_LEFTY:
 			if (gui_joystick)
 			{
+				gotEvent = 1;
 				// Deadzone
 				if (std::abs(gui_event.jaxis.value) >= 10000 || std::abs(gui_event.jaxis.value) <= 5000)
 				{
-					int axis_state = 0;
+					int axis_state;
 					int axis = gui_event.jaxis.axis;
 					int value = gui_event.jaxis.value;
 					if (std::abs(value) < 10000)
@@ -721,6 +721,7 @@ void checkInput()
 			break;
 
 		case SDL_KEYDOWN:
+			gotEvent = 1;
 			if (gui_event.key.keysym.sym == key_for_gui)
 			{
 				if (emulating && cmdStart->isEnabled())
@@ -803,7 +804,8 @@ void checkInput()
 				}
 			break;
 
-		case SDL_FINGERDOWN: 
+		case SDL_FINGERDOWN:
+			gotEvent = 1;
 			memcpy(&touch_event, &gui_event, sizeof gui_event);
 			touch_event.type = SDL_MOUSEBUTTONDOWN;
 			touch_event.button.which = 0;
@@ -814,7 +816,8 @@ void checkInput()
 			gui_input->pushInput(touch_event);
 			break;
 
-		case SDL_FINGERUP: 
+		case SDL_FINGERUP:
+			gotEvent = 1;
 			memcpy(&touch_event, &gui_event, sizeof gui_event);
 			touch_event.type = SDL_MOUSEBUTTONUP;
 			touch_event.button.which = 0;
@@ -825,7 +828,8 @@ void checkInput()
 			gui_input->pushInput(touch_event);
 			break;
 
-		case SDL_FINGERMOTION: 
+		case SDL_FINGERMOTION:
+			gotEvent = 1;
 			memcpy(&touch_event, &gui_event, sizeof gui_event);
 			touch_event.type = SDL_MOUSEMOTION;
 			touch_event.motion.which = 0;
@@ -835,6 +839,15 @@ void checkInput()
 			gui_input->pushInput(touch_event);
 			break;
 
+		case SDL_KEYUP:
+		case SDL_JOYBUTTONUP:
+		case SDL_MOUSEBUTTONDOWN:
+		case SDL_MOUSEBUTTONUP:
+		case SDL_MOUSEMOTION:
+		case SDL_MOUSEWHEEL:
+			gotEvent = 1;
+			break;
+			
 		default:
 			break;
 		}
@@ -848,16 +861,15 @@ void checkInput()
 		gui_input->pushInput(gui_event);
 #endif
 	}
+	
 	if (gotEvent)
 	{
 		// Now we let the Gui object perform its logic.
 		uae_gui->logic();
 		// Now we let the Gui object draw itself.
 		uae_gui->draw();
-#if defined (USE_DISPMANX) || defined (USE_LIBGO2)
-#else
-		SDL_UpdateTexture(gui_texture, nullptr, gui_screen->pixels, gui_screen->pitch);
-#endif
+
+		UpdateGuiScreen();
 	}
 }
 
@@ -887,12 +899,14 @@ void amiberry_gui_run()
 	// Prepare the screen once
 	uae_gui->logic();
 	uae_gui->draw();
-
+	UpdateGuiScreen();
+	
 	//-------------------------------------------------
 	// The main loop
 	//-------------------------------------------------
 	while (gui_running)
 	{
+		const auto start = SDL_GetPerformanceCounter();
 		checkInput();
 
 		if (gui_rtarea_flags_onenter != gui_create_rtarea_flag(&changed_prefs))
@@ -904,7 +918,8 @@ void amiberry_gui_run()
 			refreshFuncAfterDraw = nullptr;
 			currFunc();
 		}
-		UpdateGuiScreen();
+
+		cap_fps(start, 60);
 	}
 
 	if (gui_joystick)
