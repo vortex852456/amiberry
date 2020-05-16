@@ -592,6 +592,9 @@
     <ClCompile Include="..\..\src\scp.cpp">
       <Filter>Source files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\driveclick.cpp">
+      <Filter>Source files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\threaddep\thread.h">
@@ -970,6 +973,9 @@
       <Filter>Source files\include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\include\scp.h">
+      <Filter>Source files\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\include\driveclick.h">
       <Filter>Source files\include</Filter>
     </ClInclude>
   </ItemGroup>

@@ -27,6 +27,7 @@
 #include "gensound.h"
 #include "gui.h"
 #include "drawing.h"
+#include "driveclick.h"
 #include "statusline.h"
 #ifdef JIT
 #include "jit/compemu.h"
@@ -197,9 +198,6 @@ void devices_reset(int hardreset)
 #ifdef AUTOCONFIG
 	rtarea_reset();
 #endif
-#ifdef RETROPLATFORM
-	rp_reset();
-
 #ifdef RETROPLATFORM
 	rp_reset();
 #endif
