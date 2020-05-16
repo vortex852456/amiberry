@@ -275,7 +275,7 @@ static int bpldualpf2of, bplplanecnt, ecsshres;
 static int bplbypass, bplcolorburst, bplcolorburst_field;
 static bool issprites;
 static int bplres;
-static int plf1pri, plf2pri, bplxor, bpland, bpldelay_sh;
+static int plf1pri, plf2pri, bplxor, bplxorsp, bpland, bpldelay_sh;
 static uae_u32 plf_sprite_mask;
 static int sbasecol[2] = { 16, 16 };
 static int hposblank;
@@ -912,13 +912,15 @@ static void pfield_init_linetoscr (bool border)
 			if (x > max)
 				max = x;
 		}
-		min = coord_hw_to_window_x (min >> sprite_buffer_res) + (DIW_DDF_OFFSET << lores_shift);
-		max = coord_hw_to_window_x (max >> sprite_buffer_res) + (DIW_DDF_OFFSET << lores_shift);
+#if 0
+		min = coord_hw_to_window_x(min >> sprite_buffer_res) + (DIW_DDF_OFFSET << lores_shift);
 
 		if (min < playfield_start)
 			playfield_start = min;
 		if (playfield_start < visible_left_border)
 			playfield_start = visible_left_border;
+#endif
+		max = coord_hw_to_window_x(max >> sprite_buffer_res) + (DIW_DDF_OFFSET << lores_shift);
 		if (max > playfield_end)
 			playfield_end = max;
 		if (playfield_end > visible_right_border)
@@ -2729,9 +2731,9 @@ static void pfield_expand_dp_bplcon (void)
 		bplehb = 0;
 	}
 	bpldualpf2of = (dp_for_drawing->bplcon3 >> 10) & 7;
-	sbasecol[0] = ((dp_for_drawing->bplcon4 >> 4) & 15) << 4;
-	sbasecol[1] = ((dp_for_drawing->bplcon4 >> 0) & 15) << 4;
-	bplxor = dp_for_drawing->bplcon4 >> 8;
+	sbasecol[0] = ((dp_for_drawing->bplcon4sp >> 4) & 15) << 4;
+	sbasecol[1] = ((dp_for_drawing->bplcon4sp >> 0) & 15) << 4;
+	bplxor = dp_for_drawing->bplcon4bm >> 8;
 	int sh = (colors_for_drawing.extra >> CE_SHRES_DELAY) & 3;
 	if (sh != bpldelay_sh) {
 		bpldelay_sh = sh;
@@ -2803,8 +2805,12 @@ static void pfield_expand_dp_bplconx (int regno, int v)
 		break;
 #endif
 #ifdef AGA
-	case 0x10c: // BPLCON4
-		dp_for_drawing->bplcon4 = v;
+	case 0x10c: // BPLCON4 bitplane xor (and sprite if sprite change is not visible)
+		dp_for_drawing->bplcon4bm = v;
+		dp_for_drawing->bplcon4sp = v;
+		break;
+	case 0x10c+1: // BPLCON4 sprite bank
+		dp_for_drawing->bplcon4sp = v;
 		break;
 	case 0x1fc: // FMODE
 		dp_for_drawing->fmode = v;
@@ -2884,7 +2890,7 @@ static void do_color_changes (line_draw_func worker_border, line_draw_func worke
 
 	for (i = dip_for_drawing->first_color_change; i <= dip_for_drawing->last_color_change; i++) {
 		int regno = curr_color_changes[i].regno;
-		unsigned int value = curr_color_changes[i].value;
+		uae_u32 value = curr_color_changes[i].value;
 		int nextpos, nextpos_in_range;
 
 		if (i == dip_for_drawing->last_color_change)
@@ -3118,7 +3124,8 @@ static void pfield_draw_line (struct vidbuffer *vb, int lineno, int gfx_ypos, in
 			uae_u16 b0 = dp_for_drawing->bplcon0;
 			uae_u16 b2 = dp_for_drawing->bplcon2;
 			uae_u16 b3 = dp_for_drawing->bplcon3;
-			uae_u16 b4 = dp_for_drawing->bplcon4;
+			uae_u16 b4bm = dp_for_drawing->bplcon4bm;
+			uae_u16 b4sp = dp_for_drawing->bplcon4sp;
 			uae_u16 fm = dp_for_drawing->fmode;
 			init_ham_decoding ();
 			do_color_changes (dummy_worker, decode_ham, lineno);
@@ -3128,7 +3135,8 @@ static void pfield_draw_line (struct vidbuffer *vb, int lineno, int gfx_ypos, in
 				dp_for_drawing->bplcon0 = b0;
 				dp_for_drawing->bplcon2 = b2;
 				dp_for_drawing->bplcon3 = b3;
-				dp_for_drawing->bplcon4 = b4;
+				dp_for_drawing->bplcon4bm = b4bm;
+				dp_for_drawing->bplcon4bm = b4sp;
 				dp_for_drawing->fmode = fm;
 				pfield_expand_dp_bplcon ();
 			}

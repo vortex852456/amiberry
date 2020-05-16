@@ -7,7 +7,7 @@
 #pragma once
 #include <SDL.h>
 
-#define TARGET_NAME "amiberry"
+#define TARGET_NAME _T("amiberry")
 
 #define NO_MAIN_IN_MAIN_C
 
@@ -19,11 +19,13 @@
 
 #define MAKEBD(x,y,z) ((((x) - 2000) * 10000 + (y)) * 100 + (z))
 #define GETBDY(x) ((x) / 1000000 + 2000)
-#define GETBDM(x) (((x) - ((x / 10000) * 10000)) / 100)
+#define GETBDM(x) (((x) - (((x) / 10000) * 10000)) / 100)
 #define GETBDD(x) ((x) % 100)
 
+#define AMIBERRYVERSION _T("Amiberry v3.1.4 beta (2020-05-15)")
+#define AMIBERRYDATE MAKEBD(2020, 5, 15)
 
-#define AMIBERRYDATE MAKEBD(2019, 5, 17)
+extern std::string get_version_string();
 
 STATIC_INLINE FILE *uae_tfopen(const TCHAR *path, const TCHAR *mode)
 {
@@ -34,6 +36,7 @@ extern void fix_apmodes(struct uae_prefs *p);
 extern int generic_main (int argc, char *argv[]);
 
 extern int emulating;
+extern bool config_loaded;
 
 extern int z3_base_adr;
 #ifdef USE_DISPMANX
@@ -100,7 +103,7 @@ extern std::vector<std::string> lstMRUCDList;
 extern void AddFileToCDList(const char *file, int moveToTop);
 
 #define AMIGAWIDTH_COUNT 6
-#define AMIGAHEIGHT_COUNT 6
+#define AMIGAHEIGHT_COUNT 7
 extern const int amigawidth_values[AMIGAWIDTH_COUNT];
 extern const int amigaheight_values[AMIGAHEIGHT_COUNT];
 

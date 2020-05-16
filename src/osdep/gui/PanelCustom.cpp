@@ -7,9 +7,6 @@
 #include <guisan/sdl.hpp>
 #include <guisan/sdl/sdltruetypefont.hpp>
 #include "SelectorEntry.hpp"
-#include "UaeRadioButton.hpp"
-#include "UaeDropDown.hpp"
-#include "UaeCheckBox.hpp"
 
 #include "sysdeps.h"
 #include "options.h"
@@ -17,25 +14,25 @@
 #include "inputdevice.h"
 
 static gcn::Window* grpPort;
-static gcn::UaeRadioButton* optPort0;
-static gcn::UaeRadioButton* optPort1;
-static gcn::UaeRadioButton* optPort2;
-static gcn::UaeRadioButton* optPort3;
+static gcn::RadioButton* optPort0;
+static gcn::RadioButton* optPort1;
+static gcn::RadioButton* optPort2;
+static gcn::RadioButton* optPort3;
 
 static gcn::Window* grpFunction;
-static gcn::UaeRadioButton* optMultiNone;
-static gcn::UaeRadioButton* optMultiSelect;
-static gcn::UaeRadioButton* optMultiLeft;
-static gcn::UaeRadioButton* optMultiRight;
+static gcn::RadioButton* optMultiNone;
+static gcn::RadioButton* optMultiSelect;
+static gcn::RadioButton* optMultiLeft;
+static gcn::RadioButton* optMultiRight;
 
 static gcn::Label* lblCustomAction[14];
-static gcn::UaeDropDown* cboCustomAction[14];
+static gcn::DropDown* cboCustomAction[14];
 
 static gcn::Label* lblPortInput;
 static gcn::TextField* txtPortInput;
 static gcn::Label* lblRetroarch;
 
-static gcn::UaeCheckBox* chkAnalogRemap;
+static gcn::CheckBox* chkAnalogRemap;
 
 static int SelectedPort = 1;
 static int SelectedFunction = 0;
@@ -44,7 +41,7 @@ static int SelectedFunction = 0;
 class StringListModel : public gcn::ListModel
 {
 private:
-	vector<string> values;
+	std::vector<std::string> values;
 public:
 	StringListModel(const char* entries[], const int count)
 	{
@@ -70,7 +67,7 @@ public:
 		return 0;
 	}
 
-	string getElementAt(int i) override
+	std::string getElementAt(int i) override
 	{
 		if (i < 0 || i >= values.size())
 			return "---";
@@ -347,25 +344,33 @@ void InitPanelCustom(const struct _ConfigCategory& category)
 	customActionListener = new CustomActionListener();
 	grpActionListener = new GroupActionListener();
 
-	optPort0 = new gcn::UaeRadioButton("0: Mouse", "radioportgroup");
+	optPort0 = new gcn::RadioButton("0: Mouse", "radioportgroup");
+	optPort0->setId("0: Mouse");
 	optPort0->addActionListener(grpActionListener);
-	optPort1 = new gcn::UaeRadioButton("1: Joystick", "radioportgroup");
+	optPort1 = new gcn::RadioButton("1: Joystick", "radioportgroup");
+	optPort1->setId("1: Joystick");
 	optPort1->addActionListener(grpActionListener);
-	optPort2 = new gcn::UaeRadioButton("2: Parallel 1", "radioportgroup");
+	optPort2 = new gcn::RadioButton("2: Parallel 1", "radioportgroup");
+	optPort2->setId("2: Parallel 1");
 	optPort2->addActionListener(grpActionListener);
-	optPort3 = new gcn::UaeRadioButton("3: Parallel 2", "radioportgroup");
+	optPort3 = new gcn::RadioButton("3: Parallel 2", "radioportgroup");
+	optPort3->setId("3: Parallel 2");
 	optPort3->addActionListener(grpActionListener);
 
-	optMultiNone = new gcn::UaeRadioButton("None", "radiomultigroup");
+	optMultiNone = new gcn::RadioButton("None", "radiomultigroup");
+	optMultiNone->setId("None");
 	optMultiNone->addActionListener(grpActionListener);
-	optMultiSelect = new gcn::UaeRadioButton("HotKey", "radiomultigroup");
+	optMultiSelect = new gcn::RadioButton("HotKey", "radiomultigroup");
+	optMultiSelect->setId("HotKey");
 	optMultiSelect->addActionListener(grpActionListener);
-	//	optMultiLeft = new gcn::UaeRadioButton("Left Trigger", "radiomultigroup");
+	//	optMultiLeft = new gcn::RadioButton("Left Trigger", "radiomultigroup");
+	//	optMultiLeft->setId("Left Trigger");
 	//	optMultiLeft->addActionListener(grpActionListener);
-	//	optMultiRight = new gcn::UaeRadioButton("Right Trigger", "radiomultigroup");
+	//	optMultiRight = new gcn::RadioButton("Right Trigger", "radiomultigroup");
+	//	optMultiRight->setId("Right Trigger");
 	//	optMultiRight->addActionListener(grpActionListener);
 
-	chkAnalogRemap = new gcn::UaeCheckBox("Remap DPad to left axis");
+	chkAnalogRemap = new gcn::CheckBox("Remap DPad to left axis");
 	chkAnalogRemap->setId("chkAnalogRemap");
 	chkAnalogRemap->addActionListener(grpActionListener);
 	chkAnalogRemap->setEnabled(true);
@@ -377,6 +382,7 @@ void InitPanelCustom(const struct _ConfigCategory& category)
 	grpPort->add(optPort2, 290, 5);
 	grpPort->add(optPort3, 430, 5);
 	grpPort->setSize(580, 50);
+	grpPort->setTitleBarHeight(TITLEBAR_HEIGHT);
 	grpPort->setBaseColor(gui_baseCol);
 
 	category.panel->add(grpPort);
@@ -388,6 +394,7 @@ void InitPanelCustom(const struct _ConfigCategory& category)
 	//	grpFunction->add(optMultiLeft,   290, 5);
 	//	grpFunction->add(optMultiRight,  430, 5);
 	grpFunction->setSize(580, 50);
+	grpFunction->setTitleBarHeight(TITLEBAR_HEIGHT);
 	grpFunction->setBaseColor(gui_baseCol);
 
 	category.panel->add(grpFunction);
@@ -429,7 +436,7 @@ void InitPanelCustom(const struct _ConfigCategory& category)
 		lblCustomAction[i]->setSize(lblCustomAction[12]->getWidth(), lblCustomAction[12]->getHeight());
 		lblCustomAction[i]->setAlignment(gcn::Graphics::RIGHT);
 
-		cboCustomAction[i] = new gcn::UaeDropDown(&CustomEventList);
+		cboCustomAction[i] = new gcn::DropDown(&CustomEventList);
 		cboCustomAction[i]->setSize(cboCustomAction[i]->getWidth() * 2, cboCustomAction[i]->getHeight());
 		cboCustomAction[i]->setBaseColor(gui_baseCol);
 		cboCustomAction[i]->setBackgroundColor(colTextboxBackground);
@@ -538,9 +545,9 @@ void RefreshPanelCustom(void)
 	// update the joystick port  , and disable those which are not available
 	char tmp[255];
 
-	if (changed_prefs.jports[SelectedPort].id > JSEM_JOYS && changed_prefs.jports[SelectedPort].id < JSEM_MICE - 1)
+	if (changed_prefs.jports[SelectedPort].id >= JSEM_JOYS + num_keys_as_joys && changed_prefs.jports[SelectedPort].id < JSEM_MICE - 1)
 	{
-		const auto hostjoyid = changed_prefs.jports[SelectedPort].id - JSEM_JOYS - 1;
+		const auto hostjoyid = changed_prefs.jports[SelectedPort].id - JSEM_JOYS - num_keys_as_joys;
 		strncpy(tmp, SDL_JoystickNameForIndex(hostjoyid), 255);
 
 		for (auto n = 0; n < 14; ++n)
@@ -776,7 +783,7 @@ void RefreshPanelCustom(void)
 			break;
 		}
 		const auto x = find_in_array(RemapEventList, RemapEventListSize, eventnum);
-		if (cboCustomAction[z]->getEnabled())
+		if (cboCustomAction[z]->isEnabled())
 		{
 			cboCustomAction[z]->setSelected(x + 1);
 		}
@@ -784,7 +791,7 @@ void RefreshPanelCustom(void)
 }
 
 
-bool HelpPanelCustom(vector<string>& helptext)
+bool HelpPanelCustom(std::vector<std::string>& helptext)
 {
 	helptext.clear();
 	helptext.emplace_back("Set up Custom input actions for each Amiga port, such as Keyboard remapping,");

@@ -75,7 +75,7 @@ TCHAR* my_strdup_trim(const TCHAR* s)
 	int len = _tcslen(s);
 	while (len > 0 && _tcscspn(s + len - 1, _T("\t \r\n")) == 0)
 		len--;
-	auto out = xmalloc(TCHAR, len + 1);
+	auto* out = xmalloc(TCHAR, len + 1);
 	memcpy(out, s, len * sizeof(TCHAR));
 	out[len] = 0;
 	return out;
@@ -83,10 +83,10 @@ TCHAR* my_strdup_trim(const TCHAR* s)
 
 void discard_prefs(struct uae_prefs* p, int type)
 {
-	auto ps = &p->all_lines;
+	auto* ps = &p->all_lines;
 	while (*ps)
 	{
-		auto s = *ps;
+		auto* s = *ps;
 		*ps = s->next;
 		xfree(s->value);
 		xfree(s->option);
@@ -194,8 +194,6 @@ void fixup_cpu(struct uae_prefs* p)
 
 void fixup_prefs(struct uae_prefs* p, bool userconfig)
 {
-	//auto err = 0;
-
 	built_in_chipset_prefs(p);
 	fixup_cpu(p);
 	cfgfile_compatibility_rtg(p);
@@ -225,7 +223,7 @@ void fixup_prefs(struct uae_prefs* p, bool userconfig)
 
 	for (auto& rtgboard : p->rtgboards)
 	{
-		const auto rbc = &rtgboard;
+		auto* const rbc = &rtgboard;
 		if (rbc->rtgmem_size > max_z3fastmem && rbc->rtgmem_type == GFXBOARD_UAE_Z3)
 		{
 			error_log(
@@ -299,7 +297,7 @@ void fixup_prefs(struct uae_prefs* p, bool userconfig)
 
 	for (auto& rtgboard : p->rtgboards)
 	{
-		const auto rbc = &rtgboard;
+		auto* const rbc = &rtgboard;
 		if (p->chipmem_size > 0x200000 && rbc->rtgmem_size && gfxboard_get_configtype(rbc) == 2)
 		{
 			error_log(_T("You can't use Zorro II RTG and more than 2MB chip at the same time."));
@@ -493,7 +491,7 @@ static TCHAR* parsetext(const TCHAR* s)
 	if (*s == '"' || *s == '\'')
 	{
 		const auto c = *s++;
-		const auto d = my_strdup(s);
+		auto* const d = my_strdup(s);
 		for (unsigned int i = 0; i < _tcslen(d); i++)
 		{
 			if (d[i] == c)
@@ -509,39 +507,47 @@ static TCHAR* parsetext(const TCHAR* s)
 
 static TCHAR* parsetextpath(const TCHAR* s)
 {
-	const auto s2 = parsetext(s);
-	const auto s3 = target_expand_environment(s2, nullptr, 0);
+	auto* const s2 = parsetext(s);
+	auto* const s3 = target_expand_environment(s2, nullptr, 0);
 	xfree(s2);
 	return s3;
 }
 
 void usage()
 {
-	printf("\nUsage:\n");
-	printf(" -h                         Show this help.\n");
-	printf(" --help                     Show this help.\n");
-	printf(" -f <file>                  Load a configuration file.\n");
-	printf(" -config=<file>             Load a configuration file.\n");
-	printf(" -autoload=<file>           Load a WHDLoad game or .CUE CD32 image.\n");
-	printf(" -statefile=<file>          Load a save state file.\n");
-	printf(" -s <config param>=<value>  Set the configuration parameter with value.\n");
-	printf("                            Edit a configuration file in order to know valid parameters and settings.\n");
-	printf("\nAdditional options:\n");
-	printf(" -0 <filename>              Set adf for drive 0.\n");
-	printf(" -1 <filename>              Set adf for drive 1.\n");
-	printf(" -2 <filename>              Set adf for drive 2.\n");
-	printf(" -3 <filename>              Set adf for drive 3.\n");
-	printf(" -r <filename>              Set kickstart rom file.\n");
-	printf(" -G                         Start directly into emulation.\n");
-	printf(" -c <value>                 Size of chip memory (in number of 512 KBytes chunks).\n");
-	printf(" -F <value>                 Size of fast memory (in number of 1024 KBytes chunks).\n");
-	printf("\nNote:\n");
-	printf("Parameters are parsed from the beginning of command line, so in case of ambiguity for parameters, last one will be used.\n");
-	printf("File names should be with absolute path.\n");
-	printf("\nExample:\n");
-	printf("amiberry -config=conf/A500.uae -statefile=savestates/game.uss -s use_gui=no\n");
-	printf("It will load A500.uae configuration with the save state named game.\n");
-	printf("It will override use_gui to 'no' so that it enters emulation directly.\n");
+	std::cout << get_version_string() << std::endl;
+	std::cout << "Usage:" << std::endl;
+	std::cout << " -h                         Show this help." << std::endl;
+	std::cout << " --help                     Show this help." << std::endl;
+	std::cout << " -f <file>                  Load a configuration file." << std::endl;
+	std::cout << " -config=<file>             Load a configuration file." << std::endl;
+	std::cout << " -model=<Amiga Model>       Amiga model to emulate, from the QuickStart options." << std::endl;
+	std::cout << "                            Available options are: A500, A500P, A1200, A4000 and CD32." << std::endl;
+	std::cout << " -autoload=<file>           Load a WHDLoad game or .CUE CD32 image using the WHDBooter." << std::endl;
+	std::cout << " -cdimage=<file>            Load the CD image provided when starting emulation (for CD32)." << std::endl;
+	std::cout << " -statefile=<file>          Load a save state file." << std::endl;
+	std::cout << " -s <config param>=<value>  Set the configuration parameter with value." << std::endl;
+	std::cout << "                            Edit a configuration file in order to know valid parameters and settings." << std::endl;
+	std::cout << "\nAdditional options:" << std::endl;
+	std::cout << " -0 <filename>              Set adf for drive 0." << std::endl;
+	std::cout << " -1 <filename>              Set adf for drive 1." << std::endl;
+	std::cout << " -2 <filename>              Set adf for drive 2." << std::endl;
+	std::cout << " -3 <filename>              Set adf for drive 3." << std::endl;
+	std::cout << " -r <filename>              Set kickstart rom file." << std::endl;
+	std::cout << " -G                         Start directly into emulation." << std::endl;
+	std::cout << " -c <value>                 Size of chip memory (in number of 512 KBytes chunks)." << std::endl;
+	std::cout << " -F <value>                 Size of fast memory (in number of 1024 KBytes chunks)." << std::endl;
+	std::cout << "\nNote:" << std::endl;
+	std::cout << "Parameters are parsed from the beginning of command line, so in case of ambiguity for parameters, last one will be used." << std::endl;
+	std::cout << "File names should be with absolute path." << std::endl;
+	std::cout << "\nExample:" << std::endl;
+	std::cout << "amiberry -model=A1200 -G" << std::endl;
+	std::cout << "It will use the A1200 default settings as found in the QuickStart panel." << std::endl;
+	std::cout << "It will override use_gui to 'no' so that it enters emulation directly." << std::endl;
+	std::cout << "\nExample 2:" << std::endl;
+	std::cout << "amiberry -config=conf/A500.uae -statefile=savestates/game.uss -s use_gui=no" << std::endl;
+	std::cout << "It will load A500.uae configuration with the save state named game." << std::endl;
+	std::cout << "It will override use_gui to 'no' so that it enters emulation directly." << std::endl;
 	exit(1);
 }
 
@@ -576,7 +582,7 @@ static void parse_cmdline(int argc, TCHAR** argv)
 		}
 		else if (_tcsncmp(argv[i], _T("-config="), 8) == 0)
 		{
-			const auto txt = parsetextpath(argv[i] + 8);
+			auto* const txt = parsetextpath(argv[i] + 8);
 			currprefs.mountitems = 0;
 			target_cfgfile_load(&currprefs, txt,
 			                    firstconfig
@@ -586,9 +592,28 @@ static void parse_cmdline(int argc, TCHAR** argv)
 			firstconfig = false;
 			loaded = true;
 		}
+		else if (_tcsncmp(argv[i], _T("-model="), 7) == 0)
+		{
+			auto* const txt = parsetextpath(argv[i] + 7);
+			if (_tcsncmp(txt, _T("A500"), 4) == 0) {
+				bip_a500(&currprefs, -1);
+			}
+			else if (_tcsncmp(txt, _T("A500P"), 5) == 0) {
+				bip_a500plus(&currprefs, -1);
+			}
+			else if (_tcsncmp(txt, _T("A1200"), 5) == 0) {
+				bip_a1200(&currprefs, -1);
+			}
+			else if (_tcsncmp(txt, _T("A4000"), 5) == 0) {
+				bip_a4000(&currprefs, -1);
+			}
+			else if (_tcsncmp(txt, _T("CD32"), 4) == 0) {
+				bip_cd32(&currprefs, -1);
+			}
+		}
 		else if (_tcsncmp(argv[i], _T("-statefile="), 11) == 0)
 		{
-			const auto txt = parsetextpath(argv[i] + 11);
+			auto* const txt = parsetextpath(argv[i] + 11);
 			savestate_state = STATE_DORESTORE;
 			_tcscpy(savestate_fname, txt);
 			xfree(txt);
@@ -597,7 +622,7 @@ static void parse_cmdline(int argc, TCHAR** argv)
 			// for backwards compatibility only - WHDLoading
 		else if (_tcsncmp(argv[i], _T("-autowhdload="), 13) == 0)
 		{
-			const auto txt = parsetextpath(argv[i] + 13);
+			auto* const txt = parsetextpath(argv[i] + 13);
 			whdload_auto_prefs(&currprefs, txt);
 			xfree(txt);
 			firstconfig = false;
@@ -606,7 +631,7 @@ static void parse_cmdline(int argc, TCHAR** argv)
 			// for backwards compatibility only - CDLoading
 		else if (_tcsncmp(argv[i], _T("-autocd="), 8) == 0)
 		{
-			const auto txt = parsetextpath(argv[i] + 8);
+			auto* const txt = parsetextpath(argv[i] + 8);
 			cd_auto_prefs(&currprefs, txt);
 			xfree(txt);
 			firstconfig = false;
@@ -615,11 +640,11 @@ static void parse_cmdline(int argc, TCHAR** argv)
 			// autoload ....  .cue / .lha  
 		else if (_tcsncmp(argv[i], _T("-autoload="), 10) == 0)
 		{
-			const auto txt = parsetextpath(argv[i] + 10);
+			auto* const txt = parsetextpath(argv[i] + 10);
 			const auto txt2 = get_filename_extension(txt); // Extract the extension from the string  (incl '.')
 			if (_tcsncmp(txt2.c_str(), ".lha", 4) == 0)
 			{
-				write_log("WHDLOAD... %s\n", txt);
+				write_log("WHDLoad... %s\n", txt);
 				whdload_auto_prefs(&currprefs, txt);
 				xfree(txt);
 			}
@@ -639,7 +664,7 @@ static void parse_cmdline(int argc, TCHAR** argv)
 				write_log(_T("Missing argument for '-f' option.\n"));
 			else
 			{
-				const auto txt = parsetextpath(argv[++i]);
+				auto* const txt = parsetextpath(argv[++i]);
 				currprefs.mountitems = 0;
 				target_cfgfile_load(&currprefs, txt,
 				                    firstconfig
@@ -659,11 +684,11 @@ static void parse_cmdline(int argc, TCHAR** argv)
 		}
 		else if (_tcsncmp(argv[i], _T("-cdimage="), 9) == 0)
 		{
-			const auto txt = parsetextpath(argv[i] + 9);
-			const auto txt2 = xmalloc(TCHAR, _tcslen(txt) + 2);
+			auto* const txt = parsetextpath(argv[i] + 9);
+			auto* const txt2 = xmalloc(TCHAR, _tcslen(txt) + 5);
 			_tcscpy(txt2, txt);
-			if (_tcsrchr(txt2, ',') != nullptr)
-				_tcscat(txt2, _T(","));
+			if (_tcsrchr(txt2, ',') == nullptr)
+				_tcscat(txt2, _T(",image"));
 			cfgfile_parse_option(&currprefs, _T("cdimage0"), txt2, 0);
 			xfree(txt2);
 			xfree(txt);
@@ -691,8 +716,8 @@ static void parse_cmdline(int argc, TCHAR** argv)
 			// check if it is config file or statefile
 			if (!loaded)
 			{
-				const auto txt = parsetextpath(argv[i]);
-				const auto z = zfile_fopen(txt, _T("rb"), ZFD_NORMAL);
+				auto* const txt = parsetextpath(argv[i]);
+				auto* const z = zfile_fopen(txt, _T("rb"), ZFD_NORMAL);
 				if (z)
 				{
 					const auto type = zfile_gettype(z);
@@ -776,20 +801,9 @@ static void leave_program(void)
 
 bool check_internet_connection()
 {
-	auto result = false;
-	FILE* output;
-
-	if (!((output = popen("/sbin/route -n | grep -c '^0\\.0\\.0\\.0'", "r"))))
-		return result;
-
-	unsigned int i;
-	fscanf(output, "%u", &i);
-	if (i == 1)
-		result = true; // There is internet connection
-	else if (i == 0)
-		result = false; // There is no internet connection
-	pclose(output);
-	return result;
+	if (system("ping -c1 -s1 www.google.com"))
+		return false;
+	return true;
 }
 
 // In case of error, print the error code and close the application
@@ -797,7 +811,7 @@ void check_error_sdl(const bool check, const char* message)
 {
 	if (check)
 	{
-		cout << message << " " << SDL_GetError() << endl;
+		std::cout << message << " " << SDL_GetError() << std::endl;
 		SDL_Quit();
 		exit(-1);
 	}
@@ -813,7 +827,7 @@ static int real_main2(int argc, TCHAR** argv)
 		| SDL_INIT_GAMECONTROLLER
 		| SDL_INIT_EVENTS) != 0;
 #else
-	int ret = SDL_Init(SDL_INIT_EVERYTHING) != 0;
+	const int ret = SDL_Init(SDL_INIT_EVERYTHING) != 0;
 #endif
 	if (ret < 0)
 	{
@@ -835,7 +849,10 @@ static int real_main2(int argc, TCHAR** argv)
 	}
 	
 	if (restart_config[0])
+	{
 		parse_cmdline_and_init_file(argc, argv);
+		config_loaded = true;
+	}
 	else
 		copy_prefs(&changed_prefs, &currprefs);
 
@@ -942,7 +959,7 @@ void real_main(int argc, TCHAR** argv)
 	while (restart_program)
 	{
 		copy_prefs(&currprefs, &changed_prefs);
-		auto ret = real_main2(argc, argv);
+		const auto ret = real_main2(argc, argv);
 		if (ret == 0 && quit_to_gui)
 			restart_program = 1;
 		leave_program();

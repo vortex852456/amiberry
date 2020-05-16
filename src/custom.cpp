@@ -809,7 +809,7 @@ static void finish_playfield_line (void)
 		|| line_decisions[next_lineno].bplcon3 != thisline_decision.bplcon3
 #endif
 #ifdef AGA
-		|| line_decisions[next_lineno].bplcon4 != thisline_decision.bplcon4
+		|| line_decisions[next_lineno].bplcon4bm != thisline_decision.bplcon4bm
 		|| line_decisions[next_lineno].fmode != thisline_decision.fmode
 #endif
 		)
@@ -1013,29 +1013,40 @@ void notice_new_xcolors(void)
 	}
 }
 
-static void record_color_change2 (int hpos, int regno, uae_u32 value)
+static void record_color_change2(int hpos, int regno, uae_u32 value)
 {
 	int pos = (hpos * 2) * 4;
 
 	// AGA has extra hires pixel delay in color changes
-	if (currprefs.chipset_mask & CSMASK_AGA) {
+	if ((regno < 0x1000 || regno == 0x1000 + 0x10c) && (currprefs.chipset_mask & CSMASK_AGA)) {
 		if (currprefs.chipset_hr)
 			pos += 2;
 		if (regno == 0x1000 + 0x10c) {
-			// BPLCON4 change adds another extra hires pixel delay
-			pos += 2;
+			// BPLCON4:
+			// Bitplane XOR change: 2 hires pixel delay
+			// Sprite bank change: 1 hires pixel delay
 			if (!currprefs.chipset_hr)
 				pos += 2;
 			if (value & 0xff00)
 				thisline_decision.xor_seen = true;
+			pos += 2;
+			if ((value & 0x00ff) != (bplcon4 & 0x00ff)) {
+				// Sprite bank delay
+				color_change *ccs = &curr_color_changes[next_color_change];
+				ccs->linepos = pos;
+				ccs->regno = regno | 1;
+				ccs->value = value;
+				next_color_change++;
+			}
+			pos += 2;
 		}
 	}
-
-	curr_color_changes[next_color_change].linepos = pos;
-	curr_color_changes[next_color_change].regno = regno;
-	curr_color_changes[next_color_change].value = value;
+	color_change *cc = &curr_color_changes[next_color_change];
+	cc->linepos = pos;
+	cc->regno = regno;
+	cc->value = value;
 	next_color_change++;
-	curr_color_changes[next_color_change].regno = -1;
+	cc[1].regno = -1;
 }
 
 static bool isehb (uae_u16 bplcon0, uae_u16 bplcon2)
@@ -1844,9 +1855,9 @@ static void toscr_1 (int nbits, int fm)
 
 	out_nbits += nbits;
 	if (out_nbits == 32) {
-		int i;
+		if (out_offs < MAX_WORDS_PER_LINE / 4) {
 		uae_u8 *dataptr = line_data[next_lineno] + out_offs * 4;
-		for (i = 0; i < thisline_decision.nr_planes; i++) {
+		for (int i = 0; i < thisline_decision.nr_planes; i++) {
 			uae_u32 *dataptr32 = (uae_u32 *)dataptr;
 			if (*dataptr32 != outword[i]) {
 				thisline_changed = 1;
@@ -1856,6 +1867,7 @@ static void toscr_1 (int nbits, int fm)
 			dataptr += MAX_WORDS_PER_LINE * 2;
 		}
 		out_offs++;
+		}
 		out_nbits = 0;
 	}
 }
@@ -1875,6 +1887,7 @@ static void toscr_1_hr(int nbits, int fm)
 
 	out_nbits += nbits;
 	if (out_nbits == 64) {
+		if (out_offs < MAX_WORDS_PER_LINE * 2 / 4 - 1) {
 		uae_u8 *dataptr = line_data[next_lineno] + out_offs * 4;
 		for (int i = 0; i < thisline_decision.nr_planes; i++) {
 			uae_u64 *dataptr64 = (uae_u64 *)dataptr;
@@ -1887,6 +1900,7 @@ static void toscr_1_hr(int nbits, int fm)
 			dataptr += MAX_WORDS_PER_LINE * 2;
 		}
 		out_offs += 2;
+		}
 		out_nbits = 0;
 	}
 }
@@ -1979,15 +1993,7 @@ static int flush_plane_data_n(int fm)
 		toscr_1(32 - out_nbits, fm);
 	}
 
-	i += 32;
-	toscr_1(16, fm);
-	toscr_1(16, fm);
-
-	if (fm == 2) {
-		/* flush AGA full 64-bit shift register + possible data in todisplay */
-		i += 32;
-		toscr_1(16, fm);
-		toscr_1(16, fm);
+	for (int j = 0; j < (fm == 2 ? 3 : 1); j++) {
 		i += 32;
 		toscr_1(16, fm);
 		toscr_1(16, fm);
@@ -2010,10 +2016,10 @@ static int flush_plane_data_hr(int fm)
 		toscr_1_hr(64 - out_nbits, fm);
 	}
 
-	toscr_1_hr(32, fm);
-	i += 32;
-	toscr_1_hr(32, fm);
-	i += 32;
+	for (int j = 0; j < 4; j++) {
+		toscr_1_hr(32, fm);
+		i += 32;
+	}
 
 	int toshift = 32 << fm;
 	while (i < toshift) {
@@ -2048,7 +2054,7 @@ STATIC_INLINE void flush_display (int fm)
 	toscr_nbits = 0;
 }
 
-static void record_color_change(int hpos, int regno, unsigned long value);
+static void record_color_change(int hpos, int regno, uae_u32 value);
 
 static void hack_shres_delay(int hpos)
 {
@@ -3272,7 +3278,8 @@ static void decide_line (int hpos)
 				start_bpl_dma (hstart);
 				// if ECS: pre-set plf_end_hpos if we have already passed virtual ddfstop
 				if (ecs) {
-					if (last_decide_line_hpos < hstart && hstart >= plfstop && hstart - plfstop <= DDF_OFFSET) {
+					// DDFSTRT=$18: always skip this condition. For some unknown reason.
+					if (last_decide_line_hpos < hstart && hstart >= plfstop && hstart - plfstop <= DDF_OFFSET && hstart != HARD_DDF_START_REAL + DDF_OFFSET) {
 						plf_end_hpos = plfstop + DDF_OFFSET;
 						nextstate = plf_passed_stop;
 					}
@@ -3327,19 +3334,19 @@ static void decide_line (int hpos)
 
 /* Called when a color is about to be changed (write to a color register),
 * but the new color has not been entered into the table yet. */
-static void record_color_change (int hpos, int regno, unsigned long value)
+static void record_color_change (int hpos, int regno, uae_u32 value)
 {
-	if (regno < 0x1000 && nodraw ())
+	if (regno < 0x1000 && nodraw())
 		return;
 	/* Early positions don't appear on-screen. */
 	if (vpos < minfirstline)
 		return;
 
-	decide_diw (hpos);
-	decide_line (hpos);
+	decide_diw(hpos);
+	decide_line(hpos);
 
 	if (thisline_decision.ctable < 0)
-		remember_ctable ();
+		remember_ctable();
 
 	if  ((regno < 0x1000 || regno == 0x1000 + 0x10c) && hpos < HBLANK_OFFSET && !(beamcon0 & 0x80) && prev_lineno >= 0) {
 		struct draw_info *pdip = curr_drawinfo + prev_lineno;
@@ -3366,7 +3373,7 @@ static void record_color_change (int hpos, int regno, unsigned long value)
 			curr_color_changes[idx + 1].regno = -1;
 		}
 	}
-	record_color_change2 (hpos, regno, value);
+	record_color_change2(hpos, regno, value);
 }
 
 static bool isbrdblank (int hpos, uae_u16 bplcon0, uae_u16 bplcon3)
@@ -3420,28 +3427,19 @@ static void record_register_change (int hpos, int regno, uae_u16 value)
 	if (regno == 0x100) { // BPLCON0
 		if (value & 0x800)
 			thisline_decision.ham_seen = 1;
-		thisline_decision.ehb_seen = isehb (value, bplcon2);
-		isbrdblank (hpos, value, bplcon3);
-		issprbrd (hpos, value, bplcon3);
+		thisline_decision.ehb_seen = isehb(value, bplcon2);
+		isbrdblank(hpos, value, bplcon3);
+		issprbrd(hpos, value, bplcon3);
 	} else if (regno == 0x104) { // BPLCON2
-		thisline_decision.ehb_seen = isehb (bplcon0, value);
+		thisline_decision.ehb_seen = isehb(bplcon0, value);
 	} else if (regno == 0x106) { // BPLCON3
-		isbrdblank (hpos, bplcon0, value);
-		issprbrd (hpos, bplcon0, value);
+		isbrdblank(hpos, bplcon0, value);
+		issprbrd(hpos, bplcon0, value);
 	}
 	record_color_change (hpos, regno + 0x1000, value);
 }
 
 typedef int sprbuf_res_t, cclockres_t, hwres_t,	bplres_t;
-
-#define DO_PLAYFIELD_COLLISIONS \
-{ \
-   if (!clxcon_bpl_enable) \
-      clxdat |= 1; \
-   else \
-      if (!(clxdat & 1)) \
-         do_playfield_collisions (); \
-}
 
 /* handle very rarely needed playfield collision (CLXDAT bit 0) */
 /* only known game needing this is Rotor */
@@ -3458,13 +3456,13 @@ static void do_playfield_collisions (void)
 	int planes = 6;
 #endif
 
-	//if (clxcon_bpl_enable == 0) {
-	//	clxdat |= 1;
-	//	return;
-	//}
-	//// collision bit already set?
-	//if (clxdat & 1)
-	//	return;
+	if (clxcon_bpl_enable == 0) {
+		clxdat |= 1;
+		return;
+	}
+	// collision bit already set?
+	if (clxdat & 1)
+		return;
 
 	collided = 0;
 	minpos = thisline_decision.plfleft * 2;
@@ -3499,15 +3497,6 @@ static void do_playfield_collisions (void)
 		clxdat |= 1;
 }
 
-#define DO_SPRITE_COLLISIONS \
-{ \
-  if (clxcon_bpl_enable == 0 && !curr_drawinfo[next_lineno].nr_sprites) { \
-    /* all sprite to bitplane collision bits already set? */ \
-    if ((clxdat & 0x1fe) != 0x1fe) \
-      do_sprite_collisions (); \
-  } \
-}
-
 /* Sprite-to-sprite collisions are taken care of in record_sprite.  This one does
 playfield/sprite collisions. */
 static void do_sprite_collisions (void)
@@ -3520,11 +3509,11 @@ static void do_sprite_collisions (void)
 	hwres_t hw_diwlast = coord_window_to_diw_x (thisline_decision.diwlastword);
 	hwres_t hw_diwfirst = coord_window_to_diw_x (thisline_decision.diwfirstword);
 
-	//if (clxcon_bpl_enable == 0 && !nr_sprites)
-	//	return;
-	//// all sprite to bitplane collision bits already set?
-	//if ((clxdat & 0x1fe) == 0x1fe)
-	//	return;
+	if (clxcon_bpl_enable == 0 && !nr_sprites)
+		return;
+	// all sprite to bitplane collision bits already set?
+	if ((clxdat & 0x1fe) == 0x1fe)
+		return;
 
 	for (int i = 0; i < nr_sprites; i++) {
 		struct sprite_entry *e = curr_sprite_entries + first + i;
@@ -4193,7 +4182,8 @@ static void reset_decisions (void)
 	thisline_decision.bplcon3 = bplcon3;
 #endif
 #ifdef AGA
-	thisline_decision.bplcon4 = bplcon4;
+	thisline_decision.bplcon4bm = bplcon4;
+	thisline_decision.bplcon4sp = bplcon4;
 	thisline_decision.fmode = fmode;
 #endif
 	bplcon0d_old = -1;
@@ -4460,6 +4450,8 @@ void compute_framesync(void)
 
 	hblank_hz = (currprefs.ntscmode ? CHIPSET_CLOCK_NTSC : CHIPSET_CLOCK_PAL) / (maxhpos + (islinetoggle() ? 0.5 : 0));
 
+	// Crashes on Android
+#ifndef ANDROID
 	write_log (_T("%s mode%s%s V=%.4fHz H=%0.4fHz (%dx%d+%d) IDX=%d (%s) D=%d RTG=%d/%d\n"),
 		isntsc ? _T("NTSC") : _T("PAL"),
 		islace ? _T(" lace") : (lof_lace ? _T(" loflace") : _T("")),
@@ -4471,7 +4463,8 @@ void compute_framesync(void)
 		cr != NULL && cr->label != NULL ? cr->label : _T("<?>"),
 		currprefs.gfx_apmode[ad->picasso_on ? 1 : 0].gfx_display, ad->picasso_on, ad->picasso_requested_on
 	);
-
+#endif
+	
 	set_config_changed ();
 
 	if (target_graphics_buffer_update()) {
@@ -5293,16 +5286,14 @@ void NMI_delayed (void)
 	irq_nmi = 1;
 }
 
-static uae_u16 intreq_internal, intena_internal;
-
 int intlev (void)
 {
-	uae_u16 imask = intreq_internal & intena_internal;
+	uae_u16 imask = intreq & intena;
 	if (irq_nmi) {
 		irq_nmi = 0;
 		return 7;
 	}
-	if (!(imask && (intena_internal & 0x4000)))
+	if (!(imask && (intena & 0x4000)))
 		return -1;
 	if (imask & (0x4000 | 0x2000))						// 13 14
 		return 6;
@@ -5318,15 +5309,6 @@ int intlev (void)
 		return 1;
 	return -1;
 }
-
-#define INT_PROCESSING_DELAY (3 * CYCLE_UNIT)
-STATIC_INLINE int use_eventmode (uae_u16 v)
-{
-	if (currprefs.cpu_memory_cycle_exact && currprefs.cpu_model <= 68020)
-		return 1;
-	return 0;
-}
-
 
 void rethink_uae_int(void)
 {
@@ -5363,53 +5345,50 @@ static void send_interrupt_do (uae_u32 v)
 	INTREQ_0 (0x8000 | (1 << v));
 }
 
+// external delayed interrupt (4 CCKs minimum)
 void send_interrupt (int num, int delay)
 {
-	if (use_eventmode (0x8000) && delay > 0) {
-		// always queue interrupt if it is active because
-		// next instruction in bad code can switch it off..
-		// Absolute Inebriation / Virtual Dreams "big glenz" part
-		if (!(intreq & (1 << num)) || (intena & (1 << num)))
-			event2_newevent_xx (-1, delay, num, send_interrupt_do);
+	if (delay > 0 && (currprefs.cpu_cycle_exact || currprefs.cpu_compatible)) {
+		event2_newevent_xx (-1, delay, num, send_interrupt_do);
 	} else {
-		send_interrupt_do (num);
+		send_interrupt_do(num);
 	}
 }
 
-static int int_recursive; // yes, bad idea.
-
-static void send_intena_do (uae_u32 v)
+static void doint_delay_do (uae_u32 v)
 {
-	setclr (&intena_internal, v);
-	doint ();
+	doint();
 }
 
-static void send_intreq_do (uae_u32 v)
+static void doint_delay ()
 {
-	setclr (&intreq_internal, v);
-	int_recursive++;
-	rethink_intreq ();
-	int_recursive--;
-	doint ();
+	if (currprefs.cpu_compatible)
+	{
+		event2_newevent_xx(-1, CYCLE_UNIT + CYCLE_UNIT / 2, 0, doint_delay_do);
+	}
+	else
+	{
+		doint();
+	}
 }
 
 static void INTENA (uae_u16 v)
 {
 	uae_u16 old = intena;
 	setclr (&intena, v);
-
-	if (!(v & 0x8000) && old == intena && intena == intena_internal)
-		return;
-
-		intena_internal = intena;
-		if (v & 0x8000)
-			doint ();
+	if ((v & 0x8000) && old != intena)
+	{
+		doint_delay();
+	}
 }
 
 void INTREQ_f (uae_u16 v)
 {
-		setclr (&intreq, v);
-		setclr (&intreq_internal, v);
+	uae_u16 old = intreq;
+	setclr(&intreq, v);
+	if ((old & 0x0800) && !(intreq & 0x0800)) {
+		//serial_rbf_clear();
+	}
 }
 
 bool INTREQ_0 (uae_u16 v)
@@ -5417,18 +5396,16 @@ bool INTREQ_0 (uae_u16 v)
 	uae_u16 old = intreq;
 	setclr (&intreq, v);
 
-		uae_u16 old2 = intreq_internal;
-		intreq_internal = intreq;
-		if (old == intreq && old2 == intreq_internal)
-			return false;
-		if (v & 0x8000)
-			doint ();
-		return true;
+	if ((old & 0x0800) && !(intreq & 0x0800))
+		return false;
+	if ((v & 0x8000) && old != v)
+		doint_delay();
+	return true;
 }
 
 void INTREQ (uae_u16 data)
 {
-	if (INTREQ_0 (data))
+	if (INTREQ_0(data))
 		rethink_intreq ();
 }
 
@@ -5686,9 +5663,9 @@ static void BPLCON4(int hpos, uae_u16 v)
 		return;
 	if (bplcon4 == v)
 		return;
-	decide_line (hpos);
+	decide_line(hpos);
+	record_register_change(hpos, 0x10c, v);
 	bplcon4 = v;
-	record_register_change (hpos, 0x10c, v);
 }
 #endif
 
@@ -7214,7 +7191,7 @@ static void do_sprites_1(int num, int cycle, int hpos)
 		posctl = 1;
 		if (dma) {
 			uae_u32 data321, data322;
-			sprite_fetch_full(s, hpos, cycle, true, &data, &data321, &data322);
+			sprite_fetch_full(s, hpos, cycle, false, &data, &data321, &data322);
 			//write_log (_T("%d:%d: %04X=%04X\n"), vpos, hpos, 0x140 + cycle * 2 + num * 8, data);
 			if (cycle == 0) {
 				if (start_before_dma && s->armed) {
@@ -7239,7 +7216,7 @@ static void do_sprites_1(int num, int cycle, int hpos)
 	}
 	if (s->dmastate && !posctl && dma) {
 		uae_u32 data321, data322;
-		sprite_fetch_full(s, hpos, cycle, false, &data, &data321, &data322);
+		sprite_fetch_full(s, hpos, cycle, true, &data, &data321, &data322);
 		if (cycle == 0) {
 			// if xpos is earlier than this cycle, decide it first.
 			if (start_before_dma) {
@@ -7635,6 +7612,9 @@ static void fpscounter (bool frameok)
 	if (bogusframe || int(last) < 0)
 		return;
 
+	if (currprefs.gfx_framerate == 2)
+		idletime >>= 1;
+	
 	mavg (&fps_mavg, last / 10, FPSCOUNTER_MAVG_SIZE);
 	mavg (&idle_mavg, idletime / 10, FPSCOUNTER_MAVG_SIZE);
 	idletime = 0;
@@ -8096,9 +8076,9 @@ static void hsync_handler_pre (bool onvsync)
 		finish_decisions ();
 		if (thisline_decision.plfleft >= 0) {
 			if (currprefs.collision_level > 1)
-				DO_SPRITE_COLLISIONS
+				do_sprite_collisions();
 			if (currprefs.collision_level > 2)
-				DO_PLAYFIELD_COLLISIONS
+				do_playfield_collisions();
 		}
 		hsync_record_line_state (next_lineno, nextline_how, thisline_changed);
 
@@ -8512,8 +8492,8 @@ void custom_cpuchange(void)
 {
 	// both values needs to be same but also different
 	// after CPU mode changes
-	intreq_internal = intreq | 0x8000;
-	intena_internal = intena | 0x8000;
+	intreq = intreq | 0x8000;
+	intena = intena | 0x8000;
 }
 
 void custom_reset (bool hardreset, bool keyboardreset)
@@ -8571,8 +8551,8 @@ void custom_reset (bool hardreset, bool keyboardreset)
 		memset (spr, 0, sizeof spr);
 
 		dmacon = 0;
-		intreq_internal = 0;
-		intena = intena_internal = 0;
+		intreq = 0;
+		intena = 0;
 
 		copcon = 0;
 		DSKLEN (0, 0);
@@ -9355,9 +9335,8 @@ uae_u8 *restore_custom (uae_u8 *src)
 	ddfstop = RW;			/* 094 DDFSTOP */
 	dmacon = RW & ~(0x2000|0x4000); /* 096 DMACON */
 	CLXCON (RW);			/* 098 CLXCON */
-	intena = intena_internal = RW;	/* 09A INTENA */
+	intena = RW;	/* 09A INTENA */
 	intreq = RW;			/* 09C INTREQ */
-	intreq_internal = intreq;
 	adkcon = RW;			/* 09E ADKCON */
 	for (i = 0; i < 8; i++)
 		bplptx[i] = bplpt[i] = RL;

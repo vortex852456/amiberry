@@ -23,7 +23,6 @@
 #define DIALOG_HEIGHT 200
 
 SDL_Surface* msg_screen;
-SDL_Event msg_event;
 #ifdef USE_DISPMANX
 DISPMANX_RESOURCE_HANDLE_T message_resource;
 DISPMANX_RESOURCE_HANDLE_T black_bg_resource;
@@ -122,8 +121,8 @@ void message_UpdateScreen()
 	vc_dispmanx_element_change_source(updateHandle, message_element, message_resource);
 	vc_dispmanx_update_submit_sync(updateHandle);
 #else
-	SDL_RenderClear(renderer);
-	SDL_RenderCopy(renderer, msg_texture, nullptr, nullptr);
+	SDL_UpdateTexture(msg_texture, nullptr, msg_screen->pixels, msg_screen->pitch);
+	SDL_RenderCopyEx(renderer, msg_texture, nullptr, nullptr, rotation_angle, nullptr, SDL_FLIP_NONE);
 	SDL_RenderPresent(renderer);
 #endif
 }
@@ -132,35 +131,94 @@ void message_checkInput()
 {
 	//-------------------------------------------------
 	// Check user input
-	//-------------------------------------------------	
-
+	//-------------------------------------------------
+	//
+	const auto start = SDL_GetPerformanceCounter();
 	int gotEvent = 0;
+	SDL_Event msg_event;
+	SDL_Event touch_event;
 	while (SDL_PollEvent(&msg_event))
 	{
-		gotEvent = 1;
-		if (msg_event.type == SDL_KEYDOWN)
+		switch(msg_event.type)
 		{
+		case SDL_KEYDOWN:
+			gotEvent = 1;
 			switch (msg_event.key.keysym.sym)
 			{
+			case VK_ESCAPE:
+				msg_done = true;
+				break;
+				
 			case VK_Blue:
 			case VK_Green:
 			case SDLK_RETURN:
-				msg_done = true;
+				msg_event.key.keysym.sym = SDLK_RETURN;
+				msg_input->pushInput(msg_event);
+				msg_event.type = SDL_KEYUP;
+				//msg_done = true;
 				break;
 			default:
 				break;
 			}
-		}
-		else if (msg_event.type == SDL_JOYBUTTONDOWN)
-		{
+			break;
+
+		case SDL_JOYBUTTONDOWN:
 			if (gui_joystick)
 			{
+				gotEvent = 1;
 				if (SDL_JoystickGetButton(gui_joystick, host_input_buttons[0].east_button) ||
 					SDL_JoystickGetButton(gui_joystick, host_input_buttons[0].start_button) ||
 					SDL_JoystickGetButton(gui_joystick, host_input_buttons[0].east_button))
 
 					msg_done = true;
 			}
+			break;
+
+		case SDL_FINGERDOWN:
+			gotEvent = 1;
+			memcpy(&touch_event, &msg_event, sizeof msg_event);
+			touch_event.type = SDL_MOUSEBUTTONDOWN;
+			touch_event.button.which = 0;
+			touch_event.button.button = SDL_BUTTON_LEFT;
+			touch_event.button.state = SDL_PRESSED;
+			touch_event.button.x = msg_graphics->getTarget()->w * msg_event.tfinger.x;
+			touch_event.button.y = msg_graphics->getTarget()->h * msg_event.tfinger.y;
+			gui_input->pushInput(touch_event);
+			break;
+
+		case SDL_FINGERUP:
+			gotEvent = 1;
+			memcpy(&touch_event, &msg_event, sizeof msg_event);
+			touch_event.type = SDL_MOUSEBUTTONUP;
+			touch_event.button.which = 0;
+			touch_event.button.button = SDL_BUTTON_LEFT;
+			touch_event.button.state = SDL_RELEASED;
+			touch_event.button.x = msg_graphics->getTarget()->w * msg_event.tfinger.x;
+			touch_event.button.y = msg_graphics->getTarget()->h * msg_event.tfinger.y;
+			gui_input->pushInput(touch_event);
+			break;
+
+		case SDL_FINGERMOTION:
+			gotEvent = 1;
+			memcpy(&touch_event, &msg_event, sizeof msg_event);
+			touch_event.type = SDL_MOUSEMOTION;
+			touch_event.motion.which = 0;
+			touch_event.motion.state = 0;
+			touch_event.motion.x = msg_graphics->getTarget()->w * msg_event.tfinger.x;
+			touch_event.motion.y = msg_graphics->getTarget()->h * msg_event.tfinger.y;
+			gui_input->pushInput(touch_event);
+			break;
+
+		case SDL_KEYUP:
+		case SDL_JOYBUTTONUP:
+		case SDL_MOUSEBUTTONDOWN:
+		case SDL_MOUSEBUTTONUP:
+		case SDL_MOUSEMOTION:
+		case SDL_MOUSEWHEEL:
+			gotEvent = 1;
+			break;
+			
+		default:
 			break;
 		}
 
@@ -172,20 +230,19 @@ void message_checkInput()
 #else
 		msg_input->pushInput(msg_event);
 #endif
+
+		cap_fps(start, 60);
 	}
+	
 	if (gotEvent)
 	{
 		// Now we let the Gui object perform its logic.
 		msg_gui->logic();
 		// Now we let the Gui object draw itself.
 		msg_gui->draw();
-#ifdef USE_DISPMANX
-#else
-		SDL_UpdateTexture(msg_texture, nullptr, msg_screen->pixels, msg_screen->pitch);
-#endif
+		message_UpdateScreen();
 	}
-	// Finally we update the screen.
-	message_UpdateScreen();
+	cap_fps(start, 60);
 }
 
 void message_gui_init(const char* msg)
@@ -341,17 +398,12 @@ void message_gui_run()
 	// Prepare the screen once
 	msg_gui->logic();
 	msg_gui->draw();
-#ifdef USE_DISPMANX
-#else
-	SDL_UpdateTexture(msg_texture, nullptr, msg_screen->pixels, msg_screen->pitch);
-#endif
 	message_UpdateScreen();
 
 	while (!msg_done)
 	{
 		// Poll input
 		message_checkInput();
-		message_UpdateScreen();
 	}
 
 	if (gui_joystick)

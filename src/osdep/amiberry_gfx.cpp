@@ -32,12 +32,14 @@ static uae_sem_t display_sem = nullptr;
 static bool volatile display_thread_busy = false;
 static unsigned int current_vsync_frame = 0;
 unsigned long time_per_frame = 20000; // Default for PAL (50 Hz): 20000 microsecs
+static int vsync_modulo = 1;
 #endif
 
 /* SDL Surface for output of emulation */
 SDL_DisplayMode sdlMode;
 SDL_Surface* screen = nullptr;
 SDL_Texture* texture;
+SDL_Rect renderQuad;
 SDL_Thread * renderthread = nullptr;
 SDL_Renderer* renderer;
 const char* sdl_video_driver;
@@ -48,10 +50,10 @@ const char* sdl_video_driver;
 
 static int display_width;
 static int display_height;
+int window_width = 800, window_height = 600;
 bool can_have_linedouble;
 
 static unsigned long last_synctime;
-static int vsync_modulo = 1;
 static int host_hz = 50;
 
 /* Possible screen modes (x and y resolutions) */
@@ -340,12 +342,23 @@ int graphics_setup(void)
 	}
 
 #else
+	write_log("Trying to get Current Video Driver...\n");
 	sdl_video_driver = SDL_GetCurrentVideoDriver();
-	Uint32 sdl_window_mode;
-
-	if (strcmp(sdl_video_driver,"x11") == 0)
+	
+	SDL_DisplayMode current_mode;
+	const auto should_be_zero = SDL_GetCurrentDisplayMode(0, &current_mode);
+	if (should_be_zero == 0)
 	{
-		// Only enable Windowed mode if we're running under x11
+		write_log("Current Display mode: bpp %i\t%s\t%i x %i\t%iHz\n", SDL_BITSPERPIXEL(current_mode.format), SDL_GetPixelFormatName(current_mode.format), current_mode.w, current_mode.h, current_mode.refresh_rate);
+		host_hz = current_mode.refresh_rate;
+		can_have_linedouble = current_mode.h >= 540;
+	}
+
+	Uint32 sdl_window_mode;
+	if (sdl_video_driver != nullptr && strcmp(sdl_video_driver,"x11") == 0 
+		&& current_mode.w >= 800 && current_mode.h >= 600)
+	{
+		// Only enable Windowed mode if we're running under x11 and the resolution is at least 800x600
 		sdl_window_mode = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE;
 	}
 	else
@@ -354,28 +367,30 @@ int graphics_setup(void)
 		sdl_window_mode = SDL_WINDOW_FULLSCREEN_DESKTOP;
 	}
 
+	write_log("Trying to create window...\n");
+
 	if (sdl_window == nullptr)
 	{
-		sdl_window = SDL_CreateWindow("Amiberry",
-			SDL_WINDOWPOS_CENTERED,
-			SDL_WINDOWPOS_CENTERED,
-			800,
-			480,
-			sdl_window_mode);
+		if (rotation_angle != 0 && rotation_angle != 180)
+		{
+			sdl_window = SDL_CreateWindow("Amiberry",
+				SDL_WINDOWPOS_CENTERED,
+				SDL_WINDOWPOS_CENTERED,
+				window_height,
+				window_width,
+				sdl_window_mode);
+		}
+		else
+		{
+			sdl_window = SDL_CreateWindow("Amiberry",
+				SDL_WINDOWPOS_CENTERED,
+				SDL_WINDOWPOS_CENTERED,
+				window_width,
+				window_height,
+				sdl_window_mode);
+		}
 		check_error_sdl(sdl_window == nullptr, "Unable to create window:");		
 	}
-	
-	if (SDL_GetWindowDisplayMode(sdl_window, &sdlMode) != 0)
-	{
-		write_log("Could not get information about SDL Mode! SDL_Error: %s\n", SDL_GetError());
-	}
-	can_have_linedouble = sdlMode.h >= 540;
-
-	SDL_DisplayMode current;
-	const auto should_be_zero = SDL_GetCurrentDisplayMode(0, &current);
-	if (should_be_zero == 0)
-		host_hz = current.refresh_rate;
-
 	SDL_ShowCursor(SDL_DISABLE);
 #endif
 	
@@ -653,20 +668,40 @@ static void open_screen(struct uae_prefs* p)
 			depth = 32;
 			pixel_format = SDL_PIXELFORMAT_RGBA32;
 		}
+
+		if (rotation_angle == 0 || rotation_angle == 180)
+		{
+			SDL_RenderSetLogicalSize(renderer, display_width, display_height);
+			renderQuad = { 0, 0, display_width, display_height };
+		}
+		else
+		{
+			SDL_RenderSetLogicalSize(renderer, display_height, display_width);
+			renderQuad = { -(display_width - display_height) / 2, (display_width - display_height) / 2, display_width, display_height };
+		}
 	}
 	else
 	{
 		depth = 16;
 		pixel_format = SDL_PIXELFORMAT_RGB565;
+		const auto width = display_width * 2 >> p->gfx_resolution;
+		const auto height = display_height * 2 >> p->gfx_vresolution;
+
+		if (rotation_angle == 0 || rotation_angle == 180)
+		{
+			SDL_RenderSetLogicalSize(renderer, width, height);
+			renderQuad = { 0, 0, width, height };
+		}
+			
+		else
+		{
+			SDL_RenderSetLogicalSize(renderer, height, width);
+			renderQuad = { -(width - height) / 2, (width - height) / 2, width, height };
+		}
 	}
 
 	screen = SDL_CreateRGBSurface(0, display_width, display_height, depth, 0, 0, 0, 0);
 	check_error_sdl(screen == nullptr, "Unable to create a surface");
-
-	if (screen_is_picasso)
-		SDL_RenderSetLogicalSize(renderer, display_width, display_height);
-	else
-		SDL_RenderSetLogicalSize(renderer, display_width * 2 >> p->gfx_resolution, display_height * 2 >> p->gfx_vresolution);
 
 	texture = SDL_CreateTexture(renderer, pixel_format, SDL_TEXTUREACCESS_STREAMING, screen->w, screen->h);
 	check_error_sdl(texture == nullptr, "Unable to create texture");
@@ -743,11 +778,9 @@ int check_prefs_changed_gfx()
 		return 1;
 	}
 	
-	if (currprefs.leds_on_screen != changed_prefs.leds_on_screen ||
-		currprefs.hide_idle_led != changed_prefs.hide_idle_led)
+	if (currprefs.leds_on_screen != changed_prefs.leds_on_screen)
 	{
 		currprefs.leds_on_screen = changed_prefs.leds_on_screen;
-		currprefs.hide_idle_led = changed_prefs.hide_idle_led;
 		changed = 1;
 	}
 	if (currprefs.chipset_refreshrate != changed_prefs.chipset_refreshrate)
@@ -819,7 +852,7 @@ int sdl2_render_thread(void *ptr) {
 
 	SDL_UpdateTexture(texture, nullptr, screen->pixels, screen->pitch);
 	SDL_RenderClear(renderer);
-	SDL_RenderCopy(renderer, texture, nullptr, nullptr);
+	SDL_RenderCopyEx(renderer, texture, nullptr, &renderQuad, rotation_angle, nullptr, SDL_FLIP_NONE);
 	return 0;
 }
 
@@ -876,7 +909,9 @@ void show_screen(int mode)
 		}
 	}
 
-	current_vsync_frame += currprefs.gfx_framerate;
+	if (currprefs.gfx_framerate == 2)
+		current_vsync_frame++;
+	
 #endif
 
 #ifdef USE_DISPMANX
@@ -897,7 +932,7 @@ void show_screen(int mode)
 	{
 		SDL_UpdateTexture(texture, nullptr, screen->pixels, screen->pitch);
 		SDL_RenderClear(renderer);
-		SDL_RenderCopy(renderer, texture, nullptr, nullptr);
+		SDL_RenderCopyEx(renderer, texture, nullptr, &renderQuad, rotation_angle, nullptr, SDL_FLIP_NONE);
 		SDL_RenderPresent(renderer);
 	}
 #endif
@@ -1182,42 +1217,10 @@ static int save_thumb(char* path)
 static int currVSyncRate = 0;
 bool vsync_switchmode(int hz)
 {
-	struct amigadisplay* ad = &adisplays;
-	auto changed_height = changed_prefs.gfx_monitor.gfx_size.height;
-
 	if (hz >= 55)
 		hz = 60;
 	else
 		hz = 50;
-
-	if (hz == 50 && currVSyncRate == 60)
-	{
-		// Switch from NTSC -> PAL
-		switch (changed_height)
-		{
-		case 200: changed_height = 240; break;
-		case 216: changed_height = 262; break;
-		case 240: changed_height = 288; break;
-		case 256: changed_height = 288; break;
-		case 262: changed_height = 288; break;
-		case 288: changed_height = 288; break;
-		default: break;
-		}
-	}
-	else if (hz == 60 && currVSyncRate == 50)
-	{
-		// Switch from PAL -> NTSC
-		switch (changed_height)
-		{
-		case 200: changed_height = 200; break;
-		case 216: changed_height = 200; break;
-		case 240: changed_height = 200; break;
-		case 256: changed_height = 216; break;
-		case 262: changed_height = 216; break;
-		case 288: changed_height = 240; break;
-		default: break;
-		}
-	}
 
 	if (hz != currVSyncRate)
 	{
@@ -1225,17 +1228,15 @@ bool vsync_switchmode(int hz)
 		fpscounter_reset();
 #ifdef USE_DISPMANX		
 		time_per_frame = 1000 * 1000 / (hz);
-#endif
+
 		if (hz == host_hz)
 			vsync_modulo = 1;
 		else if (hz > host_hz)
 			vsync_modulo = 6; // Amiga draws 6 frames while host has 5 vsyncs -> sync every 6th Amiga frame
 		else
 			vsync_modulo = 5; // Amiga draws 5 frames while host has 6 vsyncs -> sync every 5th Amiga frame
+#endif
 	}
-
-	if (!ad->picasso_on && !ad->picasso_requested_on)
-		changed_prefs.gfx_monitor.gfx_size.height = changed_height;
 
 	return true;
 }
@@ -1348,7 +1349,7 @@ void picasso_init_resolutions()
 	Displays[0].rect.left = 0;
 	Displays[0].rect.top = 0;
 	Displays[0].rect.right = 800;
-	Displays[0].rect.bottom = 480;
+	Displays[0].rect.bottom = 600;
 	sprintf(tmp, "%s (%d*%d)", "Display", Displays[0].rect.right, Displays[0].rect.bottom);
 	Displays[0].name = my_strdup(tmp);
 	Displays[0].name2 = my_strdup("Display");
@@ -1456,3 +1457,8 @@ void gfx_unlock_picasso(const bool dorender)
 }
 
 #endif // PICASSO96
+
+float target_getcurrentvblankrate()
+{
+	return static_cast<float>(host_hz);
+}

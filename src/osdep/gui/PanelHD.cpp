@@ -6,8 +6,6 @@
 #include <SDL_ttf.h>
 #include <guisan/sdl.hpp>
 #include "SelectorEntry.hpp"
-#include "UaeDropDown.hpp"
-#include "UaeCheckBox.hpp"
 
 #include "sysdeps.h"
 #include "options.h"
@@ -16,6 +14,7 @@
 #include "filesys.h"
 #include "blkdev.h"
 #include "gui_handling.h"
+#include "amiberry_filesys.hpp"
 
 enum
 {
@@ -53,9 +52,9 @@ static gcn::ImageButton* listCmdDelete[MAX_HD_DEVICES];
 static gcn::Button* cmdAddDirectory;
 static gcn::Button* cmdAddHardfile;
 static gcn::Button* cmdCreateHardfile;
-static gcn::UaeCheckBox* chkHDReadOnly;
-static gcn::UaeCheckBox* chkCD;
-static gcn::UaeDropDown* cboCDFile;
+static gcn::CheckBox* chkHDReadOnly;
+static gcn::CheckBox* chkCD;
+static gcn::DropDown* cboCDFile;
 static gcn::Button* cmdCDEject;
 static gcn::Button* cmdCDSelect;
 static gcn::Label* lblCDVol;
@@ -370,7 +369,7 @@ void InitPanelHD(const struct _ConfigCategory& category)
 		listCmdProps[row]->setId(tmp);
 		listCmdProps[row]->addActionListener(hdEditActionListener);
 
-		listCmdDelete[row] = new gcn::ImageButton("data/delete.png");
+		listCmdDelete[row] = new gcn::ImageButton(prefix_with_application_directory_path("data/delete.png"));
 		listCmdDelete[row]->setBaseColor(gui_baseCol);
 		listCmdDelete[row]->setSize(SMALL_BUTTON_HEIGHT, SMALL_BUTTON_HEIGHT);
 		snprintf(tmp, 20, "cmdDel%d", row);
@@ -409,11 +408,12 @@ void InitPanelHD(const struct _ConfigCategory& category)
 	cdFileActionListener = new CDFileActionListener();
 	genericActionListener = new GenericActionListener();
 
-	chkHDReadOnly = new gcn::UaeCheckBox("Master harddrive write protection");
+	chkHDReadOnly = new gcn::CheckBox("Master harddrive write protection");
 	chkHDReadOnly->setId("chkHDRO");
 	chkHDReadOnly->addActionListener(genericActionListener);
 
-	chkCD = new gcn::UaeCheckBox("CD drive");
+	chkCD = new gcn::CheckBox("CD drive");
+	chkCD->setId("CD drive");
 	chkCD->addActionListener(cdCheckActionListener);
 
 	cmdCDEject = new gcn::Button("Eject");
@@ -428,7 +428,7 @@ void InitPanelHD(const struct _ConfigCategory& category)
 	cmdCDSelect->setId("CDSelect");
 	cmdCDSelect->addActionListener(cdButtonActionListener);
 
-	cboCDFile = new gcn::UaeDropDown(&cdfileList);
+	cboCDFile = new gcn::DropDown(&cdfileList);
 	cboCDFile->setSize(category.panel->getWidth() - 2 * DISTANCE_BORDER, cboCDFile->getHeight());
 	cboCDFile->setBaseColor(gui_baseCol);
 	cboCDFile->setBackgroundColor(colTextboxBackground);
@@ -659,6 +659,6 @@ bool HelpPanelHD(std::vector<std::string>& helptext)
 	helptext.emplace_back(R"(Activate "CD drive" to emulate CD for CD32. Use "Eject" to remove current CD)");
 	helptext.emplace_back("and click on \"...\" to open a dialog to select the iso/cue file for CD emulation.");
 	helptext.emplace_back(" ");
-	helptext.emplace_back("In current version, WAV, MP3 and FLAC are supported for audio tracks.");
+	helptext.emplace_back("In the current version, WAV, MP3 and FLAC files are supported for audio tracks.");
 	return true;
 }

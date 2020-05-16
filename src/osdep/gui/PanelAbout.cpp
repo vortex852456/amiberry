@@ -6,6 +6,7 @@
 
 #include "sysdeps.h"
 #include "gui_handling.h"
+#include "amiberry_filesys.hpp"
 
 static gcn::Label* lblEmulatorVersion;
 static gcn::Icon* icon;
@@ -15,9 +16,9 @@ static gcn::ScrollArea* textBoxScrollArea;
 
 void InitPanelAbout(const struct _ConfigCategory& category)
 {
-	amiberryLogoImage = gcn::Image::load("data/amiberry-logo.png");
+	amiberryLogoImage = gcn::Image::load(prefix_with_application_directory_path("data/amiberry-logo.png"));
 	icon = new gcn::Icon(amiberryLogoImage);
-	lblEmulatorVersion = new gcn::Label("Amiberry v3.0.3 (2019-11-23)");
+	lblEmulatorVersion = new gcn::Label(get_version_string());
 
 	textBox = new gcn::TextBox(
 		"Dimitris Panokostas (MiDWaN) - Amiberry author\n"
@@ -39,7 +40,7 @@ void InitPanelAbout(const struct _ConfigCategory& category)
 	textBoxScrollArea->setBackgroundColor(gui_baseCol);
 	textBoxScrollArea->setBaseColor(gui_baseCol);
 	textBoxScrollArea->setWidth(category.panel->getWidth() - DISTANCE_BORDER * 2);
-	textBoxScrollArea->setHeight(100);
+	textBoxScrollArea->setHeight(220);
 	textBoxScrollArea->setBorderSize(1);
 
 	auto pos_y = DISTANCE_BORDER;

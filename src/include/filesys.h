@@ -126,7 +126,7 @@ extern struct uaedev_mount_info options_mountinfo;
 
 extern struct hardfiledata *get_hardfile_data(int nr);
 extern struct hardfiledata *get_hardfile_data_controller(int nr);
-#define FILESYS_MAX_BLOCKSIZE 2048
+#define FILESYS_MAX_BLOCKSIZE 8192
 extern int hdf_open (struct hardfiledata *hfd);
 extern int hdf_open (struct hardfiledata *hfd, const TCHAR *altname);
 extern int hdf_dup (struct hardfiledata *dhfd, const struct hardfiledata *shfd);
@@ -155,9 +155,11 @@ extern void hdf_close_target (struct hardfiledata *hfd);
 extern int hdf_read_target (struct hardfiledata *hfd, void *buffer, uae_u64 offset, int len);
 extern int hdf_write_target (struct hardfiledata *hfd, void *buffer, uae_u64 offset, int len);
 extern int hdf_resize_target (struct hardfiledata *hfd, uae_u64 newsize);
+
 extern void getchsgeometry (uae_u64 size, int *pcyl, int *phead, int *psectorspertrack);
 extern void getchsgeometry_hdf (struct hardfiledata *hfd, uae_u64 size, int *pcyl, int *phead, int *psectorspertrack);
 extern void getchspgeometry (uae_u64 total, int *pcyl, int *phead, int *psectorspertrack, bool idegeometry);
+extern void gethdfgeometry(uae_u64 size, struct uaedev_config_info*);
 
 void add_cpuboard_unit(int unit, struct uaedev_config_info *uci, struct romconfig *rc);
 

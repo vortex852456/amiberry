@@ -17,6 +17,7 @@
 #include "uae.h"
 #include "gui_handling.h"
 #include "amiberry_gfx.h"
+#include "amiberry_filesys.hpp"
 #include "autoconf.h"
 
 #include "inputdevice.h"
@@ -121,6 +122,7 @@ enum
 SDL_Joystick* gui_joystick;
 SDL_Surface* gui_screen;
 SDL_Event gui_event;
+SDL_Event touch_event;
 SDL_Window* sdl_window;
 #ifdef USE_DISPMANX
 DISPMANX_RESOURCE_HANDLE_T gui_resource;
@@ -210,21 +212,6 @@ void RegisterRefreshFunc(void (*func)(void))
 	refreshFuncAfterDraw = func;
 }
 
-void FocusBugWorkaround(gcn::Window* wnd)
-{
-	// When modal dialog opens via mouse, the dialog will not
-	// have the focus unless there is a mouse click. We simulate the click...
-	SDL_Event event;
-	event.type = SDL_MOUSEBUTTONDOWN;
-	event.button.button = SDL_BUTTON_LEFT;
-	event.button.state = SDL_PRESSED;
-	event.button.x = wnd->getX() + 2;
-	event.button.y = wnd->getY() + 2;
-	gui_input->pushInput(event);
-	event.type = SDL_MOUSEBUTTONUP;
-	gui_input->pushInput(event);
-}
-
 static void ShowHelpRequested()
 {
 	vector<string> helptext;
@@ -258,10 +245,20 @@ void swcursor(bool op) {
 		SDL_GetMouseState(&dst.x, &dst.y);
 		dst.x *= mscalex * 1.03;
 		dst.y *= mscaley * 1.005;
-		SDL_RenderCopy(renderer, swcursor_texture, nullptr, &dst);
+		SDL_RenderCopyEx(renderer, swcursor_texture, nullptr, &dst, rotation_angle, nullptr, SDL_FLIP_NONE);
 	}
 }
 #endif
+
+void cap_fps(Uint64 start, int fps)
+{
+	const auto end = SDL_GetPerformanceCounter();
+	const auto elapsed_ms = float(end - start) / float(SDL_GetPerformanceFrequency()) * 1000.0f;
+	if (fps == 60)
+		SDL_Delay(floor(16.666f - elapsed_ms));
+	else if (fps == 50)
+		SDL_Delay(floor(20.000f - elapsed_ms));
+}
 
 void UpdateGuiScreen()
 {
@@ -271,8 +268,13 @@ void UpdateGuiScreen()
 	vc_dispmanx_element_change_source(updateHandle, gui_element, gui_resource);
 	vc_dispmanx_update_submit_sync(updateHandle);
 #else
-	SDL_RenderClear(renderer);
-	SDL_RenderCopy(renderer, gui_texture, nullptr, nullptr);
+	SDL_UpdateTexture(gui_texture, nullptr, gui_screen->pixels, gui_screen->pitch);
+	if (rotation_angle == 0 || rotation_angle == 180)
+		renderQuad = { 0, 0, gui_screen->w, gui_screen->h };
+	else
+		renderQuad = { -(GUI_WIDTH - GUI_HEIGHT) / 2, (GUI_WIDTH - GUI_HEIGHT) / 2, gui_screen->w, gui_screen->h };
+	
+	SDL_RenderCopyEx(renderer, gui_texture, nullptr, &renderQuad, rotation_angle, nullptr, SDL_FLIP_NONE);
 #ifdef SOFTWARE_CURSOR
 	swcursor(true);
 #endif
@@ -288,11 +290,11 @@ void setup_cursor()
 	// Detect resolution and load appropriate cursor image
 	if (strcmp(sdl_video_driver, "x11") != 0 && sdlMode.w > 1280)
 	{
-		cursor_surface = SDL_LoadBMP("data/cursor-x2.bmp");
+		cursor_surface = SDL_LoadBMP(prefix_with_application_directory_path("data/cursor-x2.bmp").c_str());
 	}
 	else
 	{
-		cursor_surface = SDL_LoadBMP("data/cursor.bmp");
+		cursor_surface = SDL_LoadBMP(prefix_with_application_directory_path("data/cursor.bmp").c_str());
 	}
 
 	if (!cursor_surface)
@@ -329,7 +331,9 @@ void amiberry_gui_init()
 	// Create new screen for GUI
 	//-------------------------------------------------
 	if (!gui_screen)
+	{
 		gui_screen = SDL_CreateRGBSurface(0, GUI_WIDTH, GUI_HEIGHT, 16, 0, 0, 0, 0);
+	}
 	check_error_sdl(gui_screen == nullptr, "Unable to create GUI surface:");
 
 #ifdef USE_DISPMANX
@@ -403,21 +407,25 @@ void amiberry_gui_init()
 	setup_cursor();
 #endif
 
-	if (sdl_window && strcmp(sdl_video_driver, "x11") == 0)
+	if (sdl_window)
 	{
-		// Only resize the window if we're under x11, otherwise we're fullscreen anyway
-		if ((SDL_GetWindowFlags(sdl_window) & SDL_WINDOW_MAXIMIZED) == 0)
-			SDL_SetWindowSize(sdl_window, GUI_WIDTH, GUI_HEIGHT);
+		if (rotation_angle != 0 && rotation_angle != 180)
+			SDL_SetWindowSize(sdl_window, GUI_HEIGHT, GUI_WIDTH);
 	}
 
 	// make the scaled rendering look smoother (linear scaling).
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
 
 	gui_texture = SDL_CreateTexture(renderer, gui_screen->format->format, SDL_TEXTUREACCESS_STREAMING, gui_screen->w,
-	                                gui_screen->h);
+									gui_screen->h);
 	check_error_sdl(gui_texture == nullptr, "Unable to create GUI texture:");
 #endif
-	SDL_RenderSetLogicalSize(renderer, GUI_WIDTH, GUI_HEIGHT);
+	
+	if (rotation_angle == 0 || rotation_angle == 180)
+		SDL_RenderSetLogicalSize(renderer, GUI_WIDTH, GUI_HEIGHT);
+	else
+		SDL_RenderSetLogicalSize(renderer, GUI_HEIGHT, GUI_WIDTH);
+	
 	SDL_ShowCursor(SDL_ENABLE);
 	SDL_SetRelativeMouseMode(SDL_FALSE);
 
@@ -427,6 +435,7 @@ void amiberry_gui_init()
 	gui_imageLoader = new gcn::SDLImageLoader();
 	// The ImageLoader in use is static and must be set to be
 	// able to load images
+	gui_imageLoader->setRenderer(renderer);
 	gcn::Image::setImageLoader(gui_imageLoader);
 	gui_graphics = new gcn::SDLGraphics();
 	// Set the target for the graphics object to be the screen.
@@ -524,12 +533,13 @@ void checkInput()
 {
 	const auto key_for_gui = SDL_GetKeyFromName(currprefs.open_gui);
 	int gotEvent = 0;
+	
 	while (SDL_PollEvent(&gui_event))
 	{
-		gotEvent = 1;
 		switch (gui_event.type)
 		{
 		case SDL_QUIT:
+			gotEvent = 1;
 			//-------------------------------------------------
 			// Quit entire program via SQL-Quit
 			//-------------------------------------------------
@@ -541,6 +551,7 @@ void checkInput()
 		case SDL_JOYBUTTONDOWN:
 			if (gui_joystick)
 			{
+				gotEvent = 1;
 				const int hat = SDL_JoystickGetHat(gui_joystick, 0);
 
 				if (SDL_JoystickGetButton(gui_joystick, host_input_buttons[0].dpad_up) || hat & SDL_HAT_UP) // dpad
@@ -615,56 +626,61 @@ void checkInput()
 			break;
 
 		case SDL_JOYAXISMOTION:
-			// Deadzone
-			if (std::abs(gui_event.jaxis.value) >= 10000 || std::abs(gui_event.jaxis.value) <= 5000)
+			if (gui_joystick)
 			{
-				int axis_state = 0;
-				int axis = gui_event.jaxis.axis;
-				int value = gui_event.jaxis.value;
-				if (std::abs(value) < 10000)
-					axis_state = 0;
-				else
-					axis_state = value > 0 ? 1 : -1;
+				gotEvent = 1;
+				// Deadzone
+				if (std::abs(gui_event.jaxis.value) >= 10000 || std::abs(gui_event.jaxis.value) <= 5000)
+				{
+					int axis_state;
+					int axis = gui_event.jaxis.axis;
+					int value = gui_event.jaxis.value;
+					if (std::abs(value) < 10000)
+						axis_state = 0;
+					else
+						axis_state = value > 0 ? 1 : -1;
 
-				if (joypad_axis_state[axis] == axis_state)
-				{
-					// ignore repeated axis movement state
-					break;
-				}
-				joypad_axis_state[axis] = axis_state;
+					if (joypad_axis_state[axis] == axis_state)
+					{
+						// ignore repeated axis movement state
+						break;
+					}
+					joypad_axis_state[axis] = axis_state;
 
-				if (get_joypad_axis_state(host_input_buttons[0].lstick_axis_y) == -1)
-				{
-					if (HandleNavigation(DIRECTION_UP))
-						continue; // Don't change value when enter Slider -> don't send event to control
-					PushFakeKey(SDLK_UP);
-					break;
-				}
-				if (get_joypad_axis_state(host_input_buttons[0].lstick_axis_y) == 1)
-				{
-					if (HandleNavigation(DIRECTION_DOWN))
-						continue; // Don't change value when enter Slider -> don't send event to control
-					PushFakeKey(SDLK_DOWN);
-					break;
-				}
-				if (get_joypad_axis_state(host_input_buttons[0].lstick_axis_x) == 1)
-				{
-					if (HandleNavigation(DIRECTION_RIGHT))
-						continue; // Don't change value when enter Slider -> don't send event to control
-					PushFakeKey(SDLK_RIGHT);
-					break;
-				}
-				if (get_joypad_axis_state(host_input_buttons[0].lstick_axis_x) == -1)
-				{
-					if (HandleNavigation(DIRECTION_LEFT))
-						continue; // Don't change value when enter Slider -> don't send event to control
-					PushFakeKey(SDLK_LEFT);
-					break;
+					if (get_joypad_axis_state(host_input_buttons[0].lstick_axis_y) == -1)
+					{
+						if (HandleNavigation(DIRECTION_UP))
+							continue; // Don't change value when enter Slider -> don't send event to control
+						PushFakeKey(SDLK_UP);
+						break;
+					}
+					if (get_joypad_axis_state(host_input_buttons[0].lstick_axis_y) == 1)
+					{
+						if (HandleNavigation(DIRECTION_DOWN))
+							continue; // Don't change value when enter Slider -> don't send event to control
+						PushFakeKey(SDLK_DOWN);
+						break;
+					}
+					if (get_joypad_axis_state(host_input_buttons[0].lstick_axis_x) == 1)
+					{
+						if (HandleNavigation(DIRECTION_RIGHT))
+							continue; // Don't change value when enter Slider -> don't send event to control
+						PushFakeKey(SDLK_RIGHT);
+						break;
+					}
+					if (get_joypad_axis_state(host_input_buttons[0].lstick_axis_x) == -1)
+					{
+						if (HandleNavigation(DIRECTION_LEFT))
+							continue; // Don't change value when enter Slider -> don't send event to control
+						PushFakeKey(SDLK_LEFT);
+						break;
+					}
 				}
 			}
 			break;
 
 		case SDL_KEYDOWN:
+			gotEvent = 1;
 			if (gui_event.key.keysym.sym == key_for_gui)
 			{
 				if (emulating && cmdStart->isEnabled())
@@ -747,6 +763,50 @@ void checkInput()
 				}
 			break;
 
+		case SDL_FINGERDOWN:
+			gotEvent = 1;
+			memcpy(&touch_event, &gui_event, sizeof gui_event);
+			touch_event.type = SDL_MOUSEBUTTONDOWN;
+			touch_event.button.which = 0;
+			touch_event.button.button = SDL_BUTTON_LEFT;
+			touch_event.button.state = SDL_PRESSED;
+			touch_event.button.x = gui_graphics->getTarget()->w * gui_event.tfinger.x;
+			touch_event.button.y = gui_graphics->getTarget()->h * gui_event.tfinger.y;
+			gui_input->pushInput(touch_event);
+			break;
+
+		case SDL_FINGERUP:
+			gotEvent = 1;
+			memcpy(&touch_event, &gui_event, sizeof gui_event);
+			touch_event.type = SDL_MOUSEBUTTONUP;
+			touch_event.button.which = 0;
+			touch_event.button.button = SDL_BUTTON_LEFT;
+			touch_event.button.state = SDL_RELEASED;
+			touch_event.button.x = gui_graphics->getTarget()->w * gui_event.tfinger.x;
+			touch_event.button.y = gui_graphics->getTarget()->h * gui_event.tfinger.y;
+			gui_input->pushInput(touch_event);
+			break;
+
+		case SDL_FINGERMOTION:
+			gotEvent = 1;
+			memcpy(&touch_event, &gui_event, sizeof gui_event);
+			touch_event.type = SDL_MOUSEMOTION;
+			touch_event.motion.which = 0;
+			touch_event.motion.state = 0;
+			touch_event.motion.x = gui_graphics->getTarget()->w * gui_event.tfinger.x;
+			touch_event.motion.y = gui_graphics->getTarget()->h * gui_event.tfinger.y;
+			gui_input->pushInput(touch_event);
+			break;
+
+		case SDL_KEYUP:
+		case SDL_JOYBUTTONUP:
+		case SDL_MOUSEBUTTONDOWN:
+		case SDL_MOUSEBUTTONUP:
+		case SDL_MOUSEMOTION:
+		case SDL_MOUSEWHEEL:
+			gotEvent = 1;
+			break;
+			
 		default:
 			break;
 		}
@@ -760,36 +820,52 @@ void checkInput()
 		gui_input->pushInput(gui_event);
 #endif
 	}
+	
 	if (gotEvent)
 	{
 		// Now we let the Gui object perform its logic.
 		uae_gui->logic();
 		// Now we let the Gui object draw itself.
 		uae_gui->draw();
-#ifdef USE_DISPMANX
-#else
-		SDL_UpdateTexture(gui_texture, nullptr, gui_screen->pixels, gui_screen->pitch);
-#endif
+
+		UpdateGuiScreen();
 	}
 }
 
 void amiberry_gui_run()
 {
-	if (gui_joystick_control && SDL_NumJoysticks() > 0)
+	if (gui_joystick_control)
 	{
-		gui_joystick = SDL_JoystickOpen(0);
-		joypad_axis_state.assign(SDL_JoystickNumAxes(gui_joystick), 0);
+		const auto available_joysticks = SDL_NumJoysticks();
+		if (available_joysticks > 0)
+		{
+			for (auto j = 0; j <= available_joysticks; j++)
+			{
+				gui_joystick = SDL_JoystickOpen(j);
+				// Some joysticks have no axes or buttons (e.g. Wii Remote IR), skip those
+				if (SDL_JoystickNumAxes(gui_joystick) > 0 && SDL_JoystickNumButtons(gui_joystick) > 0)
+				{
+					joypad_axis_state.assign(SDL_JoystickNumAxes(gui_joystick), 0);
+					break;
+				}
+
+				SDL_JoystickClose(gui_joystick);
+				gui_joystick = nullptr;
+			}
+		}
 	}
 
 	// Prepare the screen once
 	uae_gui->logic();
 	uae_gui->draw();
-
+	UpdateGuiScreen();
+	
 	//-------------------------------------------------
 	// The main loop
 	//-------------------------------------------------
 	while (gui_running)
 	{
+		const auto start = SDL_GetPerformanceCounter();
 		checkInput();
 
 		if (gui_rtarea_flags_onenter != gui_create_rtarea_flag(&changed_prefs))
@@ -801,7 +877,8 @@ void amiberry_gui_run()
 			refreshFuncAfterDraw = nullptr;
 			currFunc();
 		}
-		UpdateGuiScreen();
+
+		cap_fps(start, 60);
 	}
 
 	if (gui_joystick)
@@ -941,7 +1018,7 @@ void gui_widgets_init()
 
 	try
 	{
-		gui_font = new gcn::SDLTrueTypeFont("data/AmigaTopaz.ttf", 15);
+		gui_font = new gcn::SDLTrueTypeFont(prefix_with_application_directory_path("data/AmigaTopaz.ttf"), 15);
 	}
 	catch (const std::exception& ex)
 	{
@@ -1013,7 +1090,7 @@ void gui_widgets_init()
 	panelFocusListener = new PanelFocusListener();
 	for (i = 0; categories[i].category != nullptr; ++i)
 	{
-		categories[i].selector = new gcn::SelectorEntry(categories[i].category, categories[i].imagepath);
+		categories[i].selector = new gcn::SelectorEntry(categories[i].category, prefix_with_application_directory_path(categories[i].imagepath));
 		categories[i].selector->setActiveColor(colSelectorActive);
 		categories[i].selector->setInactiveColor(colSelectorInactive);
 		categories[i].selector->setSize(150, 24);
@@ -1043,13 +1120,13 @@ void gui_widgets_init()
 	gui_top->add(cmdShutdown, DISTANCE_BORDER, GUI_HEIGHT - DISTANCE_BORDER - BUTTON_HEIGHT);
 #endif
 	gui_top->add(cmdQuit, DISTANCE_BORDER + BUTTON_WIDTH + DISTANCE_NEXT_X,
-	             GUI_HEIGHT - DISTANCE_BORDER - BUTTON_HEIGHT);
+				 GUI_HEIGHT - DISTANCE_BORDER - BUTTON_HEIGHT);
 	gui_top->add(cmdRestart, DISTANCE_BORDER + 2 * BUTTON_WIDTH + 2 * DISTANCE_NEXT_X,
-	             GUI_HEIGHT - DISTANCE_BORDER - BUTTON_HEIGHT);
+				 GUI_HEIGHT - DISTANCE_BORDER - BUTTON_HEIGHT);
 	gui_top->add(cmdHelp, DISTANCE_BORDER + 3 * BUTTON_WIDTH + 3 * DISTANCE_NEXT_X,
-	             GUI_HEIGHT - DISTANCE_BORDER - BUTTON_HEIGHT);
+				 GUI_HEIGHT - DISTANCE_BORDER - BUTTON_HEIGHT);
 	gui_top->add(cmdReset, DISTANCE_BORDER + 5 * BUTTON_WIDTH + 5 * DISTANCE_NEXT_X,
-	             GUI_HEIGHT - DISTANCE_BORDER - BUTTON_HEIGHT);
+				 GUI_HEIGHT - DISTANCE_BORDER - BUTTON_HEIGHT);
 	gui_top->add(cmdStart, GUI_WIDTH - DISTANCE_BORDER - BUTTON_WIDTH, GUI_HEIGHT - DISTANCE_BORDER - BUTTON_HEIGHT);
 
 	gui_top->add(selectors, DISTANCE_BORDER + 1, DISTANCE_BORDER + 1);

@@ -40,22 +40,30 @@
     <ToolchainID>com.visualgdb.raspberry_pi</ToolchainID>
     <ToolchainVersion>8.3.0/8.2.1/r1</ToolchainVersion>
     <TargetName>$(ProjectName)-sdl2</TargetName>
+    <RemoteBuildHost>
+    </RemoteBuildHost>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug-dispmanx|VisualGDB'">
     <GNUConfigurationType>Debug</GNUConfigurationType>
     <ToolchainID>com.visualgdb.raspberry_pi</ToolchainID>
     <ToolchainVersion>8.3.0/8.2.1/r1</ToolchainVersion>
     <TargetName>$(ProjectName)-sdl2</TargetName>
+    <RemoteBuildHost>
+    </RemoteBuildHost>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|VisualGDB'">
     <ToolchainID>com.visualgdb.raspberry_pi</ToolchainID>
     <ToolchainVersion>8.3.0/8.2.1/r1</ToolchainVersion>
     <TargetName>$(ProjectName)-sdl2</TargetName>
+    <RemoteBuildHost>
+    </RemoteBuildHost>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-dispmanx|VisualGDB'">
     <ToolchainID>com.visualgdb.raspberry_pi</ToolchainID>
     <ToolchainVersion>8.3.0/8.2.1/r1</ToolchainVersion>
     <TargetName>$(ProjectName)-sdl2</TargetName>
+    <RemoteBuildHost>
+    </RemoteBuildHost>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|VisualGDB'">
     <ClCompile>
@@ -276,10 +284,6 @@
     <ClCompile Include="..\..\src\osdep\gui\SelectorEntry.cpp" />
     <ClCompile Include="..\..\src\osdep\gui\ShowHelp.cpp" />
     <ClCompile Include="..\..\src\osdep\gui\ShowMessage.cpp" />
-    <ClCompile Include="..\..\src\osdep\gui\UaeCheckBox.cpp" />
-    <ClCompile Include="..\..\src\osdep\gui\UaeDropDown.cpp" />
-    <ClCompile Include="..\..\src\osdep\gui\UaeListBox.cpp" />
-    <ClCompile Include="..\..\src\osdep\gui\UaeRadioButton.cpp" />
     <ClCompile Include="..\..\src\osdep\keyboard.cpp" />
     <ClCompile Include="..\..\src\osdep\mp3decoder.cpp" />
     <ClCompile Include="..\..\src\osdep\neon_helper.s" />
@@ -290,6 +294,7 @@
     <ClCompile Include="..\..\src\rommgr.cpp" />
     <ClCompile Include="..\..\src\rtc.cpp" />
     <ClCompile Include="..\..\src\savestate.cpp" />
+    <ClCompile Include="..\..\src\scp.cpp" />
     <ClCompile Include="..\..\src\scsi.cpp" />
     <ClCompile Include="..\..\src\sounddep\sound.cpp" />
     <ClCompile Include="..\..\src\statusline.cpp" />
@@ -403,6 +408,7 @@
     <ClInclude Include="..\..\src\include\rtc.h" />
     <ClInclude Include="..\..\src\include\rtgmodes.h" />
     <ClInclude Include="..\..\src\include\savestate.h" />
+    <ClInclude Include="..\..\src\include\scp.h" />
     <ClInclude Include="..\..\src\include\scsi.h" />
     <ClInclude Include="..\..\src\include\statusline.h" />
     <ClInclude Include="..\..\src\include\sysdeps.h" />
@@ -430,10 +436,6 @@
     <ClInclude Include="..\..\src\osdep\config.h" />
     <ClInclude Include="..\..\src\osdep\gui\gui_handling.h" />
     <ClInclude Include="..\..\src\osdep\gui\SelectorEntry.hpp" />
-    <ClInclude Include="..\..\src\osdep\gui\UaeCheckBox.hpp" />
-    <ClInclude Include="..\..\src\osdep\gui\UaeDropDown.hpp" />
-    <ClInclude Include="..\..\src\osdep\gui\UaeListBox.hpp" />
-    <ClInclude Include="..\..\src\osdep\gui\UaeRadioButton.hpp" />
     <ClInclude Include="..\..\src\osdep\mp3decoder.h" />
     <ClInclude Include="..\..\src\osdep\picasso96.h" />
     <ClInclude Include="..\..\src\osdep\sysconfig.h" />

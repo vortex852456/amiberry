@@ -12,10 +12,6 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE := amiberry
 
-SDL_PATH := D:/Github/amiberry-android/app/jni/SDL
-#LIBMPEG2_PATH := ../mpeg2
-LIBPNG_PATH := D:/Github/amiberry-android/app/jni/SDL_image/external/libpng-1.6.37
-
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/src \
                     $(LOCAL_PATH)/src/osdep \
                     $(LOCAL_PATH)/src/threaddep \
@@ -33,7 +29,8 @@ else ifeq ($(TARGET_ARCH_ABI),arm64-v8a)
     LOCAL_CFLAGS := -DCPU_AARCH64 -DAMIBERRY -D_FILE_OFFSET_BITS=64 -DSTATIC_LIBXML
 endif
 
-LOCAL_CPPFLAGS := -std=gnu++14 -pipe -frename-registers \
+#LOCAL_CPPFLAGS := -std=gnu++14 -pipe -frename-registers 
+LOCAL_CPPFLAGS := -std=c++14 -pipe -frename-registers \
                     -Wno-shift-overflow -Wno-narrowing
 
 LOCAL_LDFLAGS += -fuse-ld=gold
@@ -89,6 +86,7 @@ LOCAL_SRC_FILES := src/archivers/7z/BraIA64.c \
                     src/rommgr.cpp \
                     src/rtc.cpp \
                     src/savestate.cpp \
+                    src/scp.cpp \
                     src/scsi.cpp \
                     src/statusline.cpp \
                     src/traps.cpp \
@@ -156,10 +154,6 @@ LOCAL_SRC_FILES := src/archivers/7z/BraIA64.c \
                     src/osdep/amiberry_whdbooter.cpp \
                     src/osdep/sigsegv_handler.cpp \
                     src/sounddep/sound.cpp \
-                    src/osdep/gui/UaeRadioButton.cpp \
-                    src/osdep/gui/UaeDropDown.cpp \
-                    src/osdep/gui/UaeCheckBox.cpp \
-                    src/osdep/gui/UaeListBox.cpp \
                     src/osdep/gui/InGameMessage.cpp \
                     src/osdep/gui/SelectorEntry.cpp \
                     src/osdep/gui/ShowHelp.cpp \

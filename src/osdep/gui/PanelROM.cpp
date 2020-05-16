@@ -1,4 +1,3 @@
-#include <strings.h>
 #include <string.h>
 
 #include <guisan.hpp>
@@ -6,7 +5,6 @@
 #include <guisan/sdl.hpp>
 #include <guisan/sdl/sdltruetypefont.hpp>
 #include "SelectorEntry.hpp"
-#include "UaeDropDown.hpp"
 
 #include "sysdeps.h"
 #include "options.h"
@@ -14,21 +12,21 @@
 #include "gui_handling.h"
 
 static gcn::Label* lblMainROM;
-static gcn::UaeDropDown* cboMainROM;
+static gcn::DropDown* cboMainROM;
 static gcn::Button* cmdMainROM;
 static gcn::Label* lblExtROM;
-static gcn::UaeDropDown* cboExtROM;
+static gcn::DropDown* cboExtROM;
 static gcn::Button* cmdExtROM;
 static gcn::Label* lblCartROM;
-static gcn::UaeDropDown* cboCartROM;
+static gcn::DropDown* cboCartROM;
 static gcn::Button* cmdCartROM;
 static gcn::Label* lblUAEROM;
-static gcn::UaeDropDown* cboUAEROM;
+static gcn::DropDown* cboUAEROM;
 
 class ROMListModel : public gcn::ListModel
 {
-	vector<string> roms;
-	vector<int> idxToAvailableROMs;
+	std::vector<std::string> roms;
+	std::vector<int> idxToAvailableROMs;
 	int ROMType;
 
 public:
@@ -165,13 +163,13 @@ public:
 
 		if (actionEvent.getSource() == cmdMainROM)
 		{
-			strncpy(tmp, currentDir, MAX_DPATH);
+			strncpy(tmp, currentDir, MAX_DPATH - 1);
 			if (SelectFile("Select System ROM", tmp, filter))
 			{
 				const auto newrom = new AvailableROM();
 				extractFileName(tmp, newrom->Name);
 				removeFileExtension(newrom->Name);
-				strncpy(newrom->Path, tmp, MAX_DPATH);
+				strncpy(newrom->Path, tmp, MAX_DPATH - 1);
 				newrom->ROMType = ROMTYPE_KICK;
 				lstAvailableROMs.push_back(newrom);
 				strncpy(changed_prefs.romfile, tmp, sizeof changed_prefs.romfile);
@@ -181,13 +179,13 @@ public:
 		}
 		else if (actionEvent.getSource() == cmdExtROM)
 		{
-			strncpy(tmp, currentDir, MAX_DPATH);
+			strncpy(tmp, currentDir, MAX_DPATH - 1);
 			if (SelectFile("Select Extended ROM", tmp, filter))
 			{
 				const auto newrom = new AvailableROM();
 				extractFileName(tmp, newrom->Name);
 				removeFileExtension(newrom->Name);
-				strncpy(newrom->Path, tmp, MAX_DPATH);
+				strncpy(newrom->Path, tmp, MAX_DPATH - 1);
 				newrom->ROMType = ROMTYPE_EXTCDTV;
 				lstAvailableROMs.push_back(newrom);
 				strncpy(changed_prefs.romextfile, tmp, sizeof changed_prefs.romextfile);
@@ -197,13 +195,13 @@ public:
 		}
 		else if (actionEvent.getSource() == cmdCartROM)
 		{
-			strncpy(tmp, currentDir, MAX_DPATH);
+			strncpy(tmp, currentDir, MAX_DPATH - 1);
 			if (SelectFile("Select Cartridge ROM", tmp, filter))
 			{
 				const auto newrom = new AvailableROM();
 				extractFileName(tmp, newrom->Name);
 				removeFileExtension(newrom->Name);
-				strncpy(newrom->Path, tmp, MAX_DPATH);
+				strncpy(newrom->Path, tmp, MAX_DPATH - 1);
 				newrom->ROMType = ROMTYPE_CD32CART;
 				lstAvailableROMs.push_back(newrom);
 				strncpy(changed_prefs.romextfile, tmp, sizeof changed_prefs.romextfile);
@@ -241,7 +239,7 @@ void InitPanelROM(const struct _ConfigCategory& category)
 	cartROMList = new ROMListModel(ROMTYPE_ALL_CART);
 
 	lblMainROM = new gcn::Label("Main ROM File:");
-	cboMainROM = new gcn::UaeDropDown(mainROMList);
+	cboMainROM = new gcn::DropDown(mainROMList);
 	cboMainROM->setSize(textFieldWidth, cboMainROM->getHeight());
 	cboMainROM->setBaseColor(gui_baseCol);
 	cboMainROM->setBackgroundColor(colTextboxBackground);
@@ -254,7 +252,7 @@ void InitPanelROM(const struct _ConfigCategory& category)
 	cmdMainROM->addActionListener(romButtonActionListener);
 
 	lblExtROM = new gcn::Label("Extended ROM File:");
-	cboExtROM = new gcn::UaeDropDown(extROMList);
+	cboExtROM = new gcn::DropDown(extROMList);
 	cboExtROM->setSize(textFieldWidth, cboExtROM->getHeight());
 	cboExtROM->setBaseColor(gui_baseCol);
 	cboExtROM->setBackgroundColor(colTextboxBackground);
@@ -267,7 +265,7 @@ void InitPanelROM(const struct _ConfigCategory& category)
 	cmdExtROM->addActionListener(romButtonActionListener);
 
 	lblCartROM = new gcn::Label("Cartridge ROM File:");
-	cboCartROM = new gcn::UaeDropDown(cartROMList);
+	cboCartROM = new gcn::DropDown(cartROMList);
 	cboCartROM->setSize(textFieldWidth, cboCartROM->getHeight());
 	cboCartROM->setBaseColor(gui_baseCol);
 	cboCartROM->setBackgroundColor(colTextboxBackground);
@@ -280,7 +278,7 @@ void InitPanelROM(const struct _ConfigCategory& category)
 	cmdCartROM->addActionListener(romButtonActionListener);
 
 	lblUAEROM = new gcn::Label("Advanced UAE expansion board/Boot ROM:");
-	cboUAEROM = new gcn::UaeDropDown(&uaeROMList);
+	cboUAEROM = new gcn::DropDown(&uaeROMList);
 	cboUAEROM->setSize(textFieldWidth, cboUAEROM->getHeight());
 	cboUAEROM->setBaseColor(gui_baseCol);
 	cboUAEROM->setBackgroundColor(colTextboxBackground);
@@ -351,7 +349,7 @@ void RefreshPanelROM()
 		auto newrom = new AvailableROM();
 		extractFileName(changed_prefs.romfile, newrom->Name);
 		removeFileExtension(newrom->Name);
-		strncpy(newrom->Path, changed_prefs.romfile, MAX_DPATH);
+		strncpy(newrom->Path, changed_prefs.romfile, MAX_DPATH - 1);
 		newrom->ROMType = ROMTYPE_KICK;
 		lstAvailableROMs.push_back(newrom);
 		RefreshPanelROM();
@@ -368,7 +366,7 @@ void RefreshPanelROM()
 		auto newrom = new AvailableROM();
 		extractFileName(changed_prefs.romextfile, newrom->Name);
 		removeFileExtension(newrom->Name);
-		strncpy(newrom->Path, changed_prefs.romextfile, MAX_DPATH);
+		strncpy(newrom->Path, changed_prefs.romextfile, MAX_DPATH - 1);
 		newrom->ROMType = ROMTYPE_EXTCDTV;
 		lstAvailableROMs.push_back(newrom);
 		RefreshPanelROM();
@@ -394,12 +392,17 @@ void RefreshPanelROM()
 bool HelpPanelROM(std::vector<std::string>& helptext)
 {
 	helptext.clear();
-	helptext.emplace_back("Select the required kickstart ROM for the Amiga you want to emulate in \"Main ROM File\".");
+	helptext.emplace_back("Select the required Kickstart ROM for the Amiga you want to emulate in \"Main ROM File\".");
 	helptext.emplace_back(" ");
 	helptext.emplace_back("In \"Extended ROM File\", you can only select the required ROM for CD32 emulation.");
 	helptext.emplace_back(" ");
 	helptext.emplace_back("In \"Cartridge ROM File\", you can select the CD32 FMV module to activate video");
 	helptext.emplace_back("playback in CD32. There are also some Action Replay and Freezer cards and the built-in");
 	helptext.emplace_back("HRTMon available.");
+	helptext.emplace_back(" ");
+	helptext.emplace_back("The Advanced UAE Expansion/Boot ROM option allows you to set the following:");
+	helptext.emplace_back("Rom Disabled: All UAE expansions are disabled. Only needed if you want to force it.");
+	helptext.emplace_back("Original UAE: Autoconfig board + F0 ROM.");
+	helptext.emplace_back("New UAE: 64k + F0 ROM - not very useful (per Toni Wilen).");
 	return true;
 }
