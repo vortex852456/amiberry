@@ -503,8 +503,10 @@ void target_default_options(struct uae_prefs* p, int type)
 	p->cr[0].rtg = true;
 	_tcscpy(p->cr[0].label, _T("RTG"));
 
-	p->floppyslots[0].dfxclick = 1;
-	p->floppyslots[0].dfxclickexternal[0] = 0;
+	for (auto& floppyslot : p->floppyslots)
+	{
+		floppyslot.dfxclick = 1;
+	}
 }
 
 void target_save_options(struct zfile* f, struct uae_prefs* p)
@@ -1609,7 +1611,7 @@ bool get_plugin_path(TCHAR* out, int size, const TCHAR* path) {
 	// static char* plugin_path_none = NULL;
 
 	if (strcmp(path, "floppysounds") == 0) {
-			strncpy(out, "data/floppy_sounds/", size);
+		snprintf(out, MAX_DPATH, "%s/data/floppy_sounds/", start_path_data);
 		// make sure out is null-terminated in any case
 		out[size - 1] = '\0';
 	}

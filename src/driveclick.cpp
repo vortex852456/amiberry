@@ -19,6 +19,10 @@
 #include "fsdb.h"
 #include "driveclick.h"
 
+#include <iostream>
+#include <fstream>
+using namespace std;
+
 static struct drvsample drvs[4][DS_END];
 static int freq = 44100;
 
@@ -556,9 +560,7 @@ int driveclick_loadresource(struct drvsample* sp, int drivetype)
 		default:
 			continue;
 		}
-		uae_u8* data = NULL;
-		int size = 0;
-		
+
 		//if (fs_data_file_content(name, &data, &size) == 0) {
 		//	int len = (int)size;
 		//	struct drvsample* s = sp + type;
@@ -569,18 +571,21 @@ int driveclick_loadresource(struct drvsample* sp, int drivetype)
 
 		if (my_existsfile(name))
 		{
-			auto* z = zfile_fopen(name, _T("rb"));
-			if (!z)
-				return 0;
-			size = zfile_size(z);
-			data = xmalloc(uae_u8, size);
-			zfile_fread(data, 1, size, z);
-			zfile_fclose(z);
+			ifstream file(name, ios::in | ios::binary | ios::ate);
+			if (file.is_open())
+			{
+				int size = file.tellg();
+				uae_u8* data = new uae_u8[size];
+				file.seekg(0, ios::beg);
+				file.read((char*)&data[0], size);
+				file.close();
 
-			auto* s = sp + type;
-			s->p = decodewav(data, &size);
-			s->len = size;
-			free(data);
+				auto* s = sp + type;
+				s->p = decodewav(data, &size);
+				s->len = size;
+				
+				delete[] data;
+			}
 		}
 	}
 	return 1;
