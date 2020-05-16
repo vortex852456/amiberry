@@ -1424,40 +1424,42 @@ bool zfile_needwrite (struct zfile *zf)
 	return writeneeded (zf->mode);
 }
 
-static struct zfile *zfile_fopen_2 (const TCHAR *name, const TCHAR *mode, int mask)
+static struct zfile* zfile_fopen_2(const TCHAR* name, const TCHAR* mode, int mask)
 {
-	struct zfile *l;
-	FILE *f;
+	struct zfile* l;
+	FILE* f;
 
-  if( *name == '\0' )
-    return NULL;
-  l = openzip (name);
-  if (l) {
-  	if (writeneeded (mode)) {
-	    zfile_fclose (l);
-	    return 0;
-  	}
-  	l->zfdmask = mask;
-  } else {
+	if (*name == '\0')
+		return NULL;
+	l = openzip(name);
+	if (l) {
+		if (writeneeded(mode)) {
+			zfile_fclose(l);
+			return 0;
+		}
+		l->zfdmask = mask;
+	}
+	else {
 		struct mystat st;
-		l = zfile_create (NULL, name);
-  	l->mode = my_strdup (mode);
-  	l->name = my_strdup (name);
-  	l->zfdmask = mask;
-  	if (!_tcsicmp (mode, _T("r"))) {
-	    f = my_opentext (l->name);
-  	} else {
-			f = uae_tfopen (l->name, mode);
-  	}
-    if (!f) {
-    	zfile_fclose (l);
-    	return 0;
-    }
-		if (my_stat (l->name, &st))
+		l = zfile_create(NULL, name);
+		l->mode = my_strdup(mode);
+		l->name = my_strdup(name);
+		l->zfdmask = mask;
+		if (!_tcsicmp(mode, _T("r"))) {
+			f = my_opentext(l->name);
+		}
+		else {
+			f = uae_tfopen(l->name, mode);
+		}
+		if (!f) {
+			zfile_fclose(l);
+			return 0;
+		}
+		if (my_stat(l->name, &st))
 			l->size = st.size;
-  	l->f = f;
-  }
-  return l;
+		l->f = f;
+	}
+	return l;
 }
 
 static void manglefilename(const TCHAR *in, TCHAR *out, int outsize)
@@ -1473,59 +1475,60 @@ static void manglefilename(const TCHAR *in, TCHAR *out, int outsize)
     }
   }
 }
-int zfile_zopen (const TCHAR *name, zfile_callback zc, void *user)
+int zfile_zopen(const TCHAR* name, zfile_callback zc, void* user)
 {
-  struct zfile *l;
-  int ztype;
-  TCHAR path[MAX_DPATH];
-    
-	manglefilename (name, path, sizeof (path) / sizeof(TCHAR));
-  l = zfile_fopen_2 (path, _T("rb"), ZFD_NORMAL);
-  if (!l)
-  	return 0;
-  ztype = iszip (l);
-  if (ztype == 0)
-    zc (l, user);
-  else
-  	archive_access_scan (l, zc, user, ztype);
-  zfile_fclose (l);
-  return 1;
-}    
+	struct zfile* l;
+	int ztype;
+	TCHAR path[MAX_DPATH];
+
+	manglefilename(name, path, sizeof(path) / sizeof(TCHAR));
+	l = zfile_fopen_2(path, _T("rb"), ZFD_NORMAL);
+	if (!l)
+		return 0;
+	ztype = iszip(l);
+	if (ztype == 0)
+		zc(l, user);
+	else
+		archive_access_scan(l, zc, user, ztype);
+	zfile_fclose(l);
+	return 1;
+}
 
 /*
  * fopen() for a compressed file
  */
-static struct zfile *zfile_fopen_x (const TCHAR *name, const TCHAR *mode, int mask, int index)
+static struct zfile* zfile_fopen_x(const TCHAR* name, const TCHAR* mode, int mask, int index)
 {
-  int cnt = 10;
-  struct zfile *l, *l2;
-  TCHAR path[MAX_DPATH];
+	int cnt = 10;
+	struct zfile* l, * l2;
+	TCHAR path[MAX_DPATH];
 
-	if (_tcslen (name) == 0)
+	if (_tcslen(name) == 0)
 		return NULL;
-	manglefilename(name, path, sizeof(path) / sizeof (TCHAR));
-  l = zfile_fopen_2 (path, mode, mask);
-  if (!l)
-  	return 0;
-  l2 = NULL;
-  while (cnt-- > 0) {
-  	int rc;
-    zfile_fseek (l, 0, SEEK_SET);
-  	l2 = zuncompress (NULL, l, 0, mask, &rc, index);
-  	if (!l2) {
-	    if (rc < 0) {
-    		zfile_fclose (l);
-    		return NULL;
-	    }
-	    zfile_fseek (l, 0, SEEK_SET);
-      break;
-		} else {
+	manglefilename(name, path, sizeof(path) / sizeof(TCHAR));
+	l = zfile_fopen_2(path, mode, mask);
+	if (!l)
+		return 0;
+	l2 = NULL;
+	while (cnt-- > 0) {
+		int rc;
+		zfile_fseek(l, 0, SEEK_SET);
+		l2 = zuncompress(NULL, l, 0, mask, &rc, index);
+		if (!l2) {
+			if (rc < 0) {
+				zfile_fclose(l);
+				return NULL;
+			}
+			zfile_fseek(l, 0, SEEK_SET);
+			break;
+		}
+		else {
 			if (l2->parent == l)
 				l->opencnt--;
-	  }
-	  l = l2;
-  }
-  return l;
+		}
+		l = l2;
+	}
+	return l;
 }
 
 #ifdef _WIN32
@@ -1801,17 +1804,17 @@ struct zfile *zfile_fopen_load_zfile (struct zfile *f)
 	return l;
 }
 
-struct zfile *zfile_fopen_data (const TCHAR *name, uae_u64 size, const uae_u8 *data)
+struct zfile* zfile_fopen_data(const TCHAR* name, uae_u64 size, const uae_u8* data)
 {
-	struct zfile *l;
+	struct zfile* l;
 
-	l = zfile_create (NULL, name);
-  l->name = my_strdup (name ? name  : _T(""));
-  l->data = xmalloc (uae_u8, size);
-  l->size = size;
-  l->datasize = size;
-  memcpy (l->data, data, size);
-  return l;
+	l = zfile_create(NULL, name);
+	l->name = my_strdup(name ? name : _T(""));
+	l->data = xmalloc(uae_u8, size);
+	l->size = size;
+	l->datasize = size;
+	memcpy(l->data, data, size);
+	return l;
 }
 
 uae_u8 *zfile_load_file(const TCHAR *name, int *outlen)

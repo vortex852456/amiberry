@@ -54,7 +54,7 @@ int disk_debug_track = -1;
 
 int floppy_writemode = 0;
 
- /* support HD floppies */
+/* support HD floppies */
 #define FLOPPY_DRIVE_HD
 /* writable track length with normal 2us bitcell/300RPM motor, 12667 PAL, 12797 NTSC */
 #define FLOPPY_WRITE_LEN_PAL 12668
@@ -1285,8 +1285,7 @@ static int drive_insert (drive * drv, struct uae_prefs *p, int dnum, const TCHAR
 		}
 		drv->useturbo = 1;
 
-	}
-	else if (canauto && (
+	} else if (canauto && (
 
 		// 320k double sided
 		size == 8 * 40 * 2 * 512 ||
@@ -1363,46 +1362,15 @@ static int drive_insert (drive * drv, struct uae_prefs *p, int dnum, const TCHAR
 					}
 				}
 			}
-			if (drv->hard_num_cyls == 40 || can40) {
-				if (size == 9 * 40 * side * 512) {
-					drv->num_secs = 9;
-					drv->ddhd = 1;
-					sd = 1;
-					break;
-				}
-				else if (size == 8 * 40 * side * 512) {
-					drv->num_secs = 8;
-					drv->ddhd = 1;
-					sd = 1;
-					break;
-				}
-			}
-		}
 
 			drv->num_tracks = size / (drv->num_secs * 512);
 
-		// SD disk in 5.25 drive = duplicate each track
-		if (sd && p->floppyslots[dnum].dfxtype == DRV_525_DD) {
-			drv->num_tracks *= 2;
-		}
-		else {
-			sd = 0;
-		}
-
-		drv->filetype = ADF_PCDOS;
-		tid = &drv->trackdata[0];
-		for (int i = 0; i < drv->num_tracks; i++) {
-			tid->type = TRACK_PCDOS;
-			tid->len = 512 * drv->num_secs;
-			tid->bitlen = 0;
-			tid->offs = (sd ? i / 2 : i) * 512 * drv->num_secs;
-			if (side == 1) {
-				tid++;
-				tid->type = TRACK_NONE;
-				tid->len = 512 * drv->num_secs;
+			// SD disk in 5.25 drive = duplicate each track
+			if (sd && p->floppyslots[dnum].dfxtype == DRV_525_DD) {
+				drv->num_tracks *= 2;
+			} else {
+				sd = 0;
 			}
-			tid->revolutions = 1;
-			tid++;
 
 			drv->filetype = ADF_PCDOS;
 			tid = &drv->trackdata[0];
@@ -1555,7 +1523,7 @@ static int drive_empty (drive * drv)
 	return drv->diskfile == 0 && drv->dskchange_time >= 0;
 }
 
-static void drive_step(drive* drv, int step_direction)
+static void drive_step (drive * drv, int step_direction)
 {
 #ifdef CATWEASEL
 	if (drv->catweasel) {
@@ -1632,7 +1600,7 @@ static void motordelay_func (uae_u32 v)
 	floppy[v].motordelay = 0;
 }
 
-static void drive_motor(drive* drv, bool off)
+static void drive_motor (drive * drv, bool off)
 {
 	if (drv->motoroff && !off) {
 		drv->dskready_up_time = DSKREADY_UP_TIME * 312 + (uaerand() & 511);
@@ -1664,8 +1632,7 @@ static void drive_motor(drive* drv, bool off)
 	if (drv->motoroff) {
 		drv->dskready = 0;
 		drv->dskready_up_time = 0;
-	}
-	else {
+	} else {
 		drv->dskready_down_time = 0;
 	}
 #ifdef CATWEASEL
@@ -2074,11 +2041,13 @@ static void drive_fill_bigbuf (drive * drv, int force)
 #ifdef CAPS
 		caps_loadtrack (drv->bigmfmbuf, drv->tracktiming, drv - floppy, tr, &drv->tracklen, &drv->multi_revolution, &drv->skipoffset, &drv->lastrev, retrytrack);
 #endif
+
 	} else if (drv->filetype == ADF_SCP) {
 
 #ifdef SCP
 		scp_loadtrack (drv->bigmfmbuf, drv->tracktiming, drv - floppy, tr, &drv->tracklen, &drv->multi_revolution, &drv->skipoffset, &drv->lastrev, retrytrack);
 #endif
+
 	} else if (drv->filetype == ADF_FDI) {
 
 #ifdef FDI2RAW
@@ -2595,7 +2564,7 @@ static void drive_write_data (drive * drv)
 	drv->tracktiming[0] = 0;
 }
 
-static void drive_eject(drive* drv)
+static void drive_eject (drive * drv)
 {
 #ifdef DRIVESOUND
 	if (isfloppysound (drv))

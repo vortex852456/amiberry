@@ -253,7 +253,7 @@ void devices_rethink(void)
 
 void devices_update_sound(double clk, double syncadjust)
 {
-	update_sound(clk);
+	update_sound (clk);
 }
 
 void devices_update_sync(double svpos, double syncadjust)

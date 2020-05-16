@@ -502,6 +502,9 @@ void target_default_options(struct uae_prefs* p, int type)
 	p->cr[0].locked = true;
 	p->cr[0].rtg = true;
 	_tcscpy(p->cr[0].label, _T("RTG"));
+
+	p->floppyslots[0].dfxclick = 1;
+	p->floppyslots[0].dfxclickexternal[0] = 0;
 }
 
 void target_save_options(struct zfile* f, struct uae_prefs* p)
@@ -1600,4 +1603,20 @@ int amiga_clipboard_want_data()
 
 void clipboard_vsync()
 {
+}
+
+bool get_plugin_path(TCHAR* out, int size, const TCHAR* path) {
+	// static char* plugin_path_none = NULL;
+
+	if (strcmp(path, "floppysounds") == 0) {
+			strncpy(out, "data/floppy_sounds/", size);
+		// make sure out is null-terminated in any case
+		out[size - 1] = '\0';
+	}
+	else {
+		write_log("\n-----------------> STUB: get_plugin_path, "
+			"size: %d, path: %s\n", size, path);
+		out[0] = '\0';
+	}
+	return TRUE;
 }
