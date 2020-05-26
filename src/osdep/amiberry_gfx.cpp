@@ -717,17 +717,17 @@ void flush_screen(struct vidbuffer* vidbuffer, int ystart, int ystop)
 {
 	if (vidbuffer->bufmem == nullptr) return; // no buffer allocated return
 
-	static int last_g_autozoom;
+	static int last_autoheight;
 	if (currprefs.gfx_auto_height)
 	{
 		static int last_vstrt, last_vstop, new_height;
-		if (last_g_autozoom != currprefs.gfx_auto_height || last_vstrt != vstrt || last_vstop != vstop)
+		if (last_autoheight != currprefs.gfx_auto_height || last_vstrt != vstrt || last_vstop != vstop)
 		{
 			last_vstrt = vstrt;
 			last_vstop = vstop;
 
 			auto start_y = minfirstline;  // minfirstline = first line to be written to screen buffer
-			auto stop_y = 270 + minfirstline; // last line to be written to screen buffer
+			auto stop_y = 274 + minfirstline; // last line to be written to screen buffer
 			if (vstrt > minfirstline)
 				start_y = vstrt;		// if vstrt > minfirstline then there is a black border
 			if (start_y > 200)
@@ -736,6 +736,7 @@ void flush_screen(struct vidbuffer* vidbuffer, int ystart, int ystop)
 				stop_y = vstop;			// if vstop < stop_y then there is a black border
 
 			new_height = stop_y - start_y;
+			
 			if (new_height < 200)
 				new_height = 200;
 			if (new_height != currprefs.gfx_monitor.gfx_size.height)
@@ -744,11 +745,12 @@ void flush_screen(struct vidbuffer* vidbuffer, int ystart, int ystop)
 				currprefs.gfx_monitor.gfx_size.height = new_height;
 				copy_prefs(&currprefs, &changed_prefs);
 				open_screen(&currprefs);
+				init_custom();
 			}
 		}
 	}
 
-	last_g_autozoom = currprefs.gfx_auto_height;
+	last_autoheight = currprefs.gfx_auto_height;
 }
 
 void update_display(struct uae_prefs* p)
