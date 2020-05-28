@@ -12,9 +12,12 @@
 #include "options.h"
 #include "include/memory.h"
 #include "newcpu.h"
+#include "xwin.h"
+
+static const int pissoff_nojit_value = 256 * CYCLE_UNIT;
 
 unsigned long int nextevent, currcycle;
-int is_syncline;
+int is_syncline, is_syncline_end;
 
 frame_time_t vsyncmintime, vsyncmaxtime, vsyncwaittime;
 int vsynctimebase;
@@ -48,19 +51,53 @@ void events_schedule(void)
 static bool event_check_vsync(void)
 {
 	/* Keep only CPU emulation running while waiting for sync point. */
-	if (is_syncline)
-	{
-		int rpt = read_processor_time();
-		int v = rpt - vsyncmintime;
-		if (v > vsynctimebase || v < -vsynctimebase)
-		{
-			v = 0;
+	if (is_syncline == -1
+		|| is_syncline == -2
+		|| is_syncline == -3
+		|| is_syncline > 0
+		|| is_syncline <= -100) {
+
+		if (!isvsync_chipset()) {
+			events_reset_syncline();
+			return false;
 		}
-		if (v < speedup_timelimit)
-		{
-			regs.pissoff = pissoff_value;
-			return true;
-		}
+	}
+
+	else if (is_syncline == -10) {
+
+		// wait is_syncline_end
+		//if (event_wait) {
+			int rpt = read_processor_time();
+			int v = rpt - is_syncline_end;
+			if (v < 0)
+			{
+				if (currprefs.cachesize)
+					regs.pissoff = pissoff_value;
+				else
+					regs.pissoff = pissoff_nojit_value;
+				return true;
+			}
+		//}
+		events_reset_syncline();
+	}
+	else if (is_syncline < -10) {
+
+		// wait is_syncline_end/vsyncmintime
+		//if (event_wait) {
+			int rpt = read_processor_time();
+			int v = rpt - vsyncmintime;
+			int v2 = rpt - is_syncline_end;
+			if (v > vsynctimebase || v < -vsynctimebase) {
+				v = 0;
+			}
+			if (v < 0 && v2 < 0) {
+				if (currprefs.cachesize)
+					regs.pissoff = pissoff_value;
+				else
+					regs.pissoff = pissoff_nojit_value;
+				return true;
+			}
+		//}
 		events_reset_syncline();
 	}
 	return false;
