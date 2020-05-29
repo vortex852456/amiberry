@@ -258,23 +258,26 @@ static NavigationMap navMap[] =
 	{"Left Trigger", "HotKey", "Right Trigger", "2: Parallel 1", "cboCustomAction0"},
 	{"Right Trigger", "Left Trigger", "Custom controls", "3: Parallel 2", "cboCustomAction0"},
 
-	{"cboCustomAction0", "Custom controls", "cboCustomAction7", "None", "cboCustomAction1"},
-	{"cboCustomAction1", "Custom controls", "cboCustomAction8", "cboCustomAction0", "cboCustomAction2"},
-	{"cboCustomAction2", "Custom controls", "cboCustomAction9", "cboCustomAction1", "cboCustomAction3"},
-	{"cboCustomAction3", "Custom controls", "cboCustomAction10", "cboCustomAction2", "cboCustomAction4"},
-	{"cboCustomAction4", "Custom controls", "cboCustomAction11", "cboCustomAction3", "cboCustomAction5"},
-	{"cboCustomAction5", "Custom controls", "cboCustomAction12", "cboCustomAction4", "cboCustomAction6"},
-	{"cboCustomAction6", "Custom controls", "cboCustomAction13", "cboCustomAction5", "cboCustomAction7"},
+        //  active            move left           move right          move up           move down
+	{"cboCustomAction0", "Custom controls", "cboCustomAction8", "None", "cboCustomAction1"},
+	{"cboCustomAction1", "Custom controls", "cboCustomAction9", "cboCustomAction0", "cboCustomAction2"},
+	{"cboCustomAction2", "Custom controls", "cboCustomAction10", "cboCustomAction1", "cboCustomAction3"},
+	{"cboCustomAction3", "Custom controls", "cboCustomAction11", "cboCustomAction2", "cboCustomAction4"},
+	{"cboCustomAction4", "Custom controls", "cboCustomAction12", "cboCustomAction3", "cboCustomAction5"},
+	{"cboCustomAction5", "Custom controls", "cboCustomAction13", "cboCustomAction4", "cboCustomAction6"},
+	{"cboCustomAction6", "Custom controls", "cboCustomAction14", "cboCustomAction5", "cboCustomAction7"},
+	{"cboCustomAction7", "Custom controls", "cboCustomAction15", "cboCustomAction6", "cboCustomAction8"},
 
-	{"cboCustomAction7", "cboCustomAction0", "Custom controls", "cboCustomAction6", "cboCustomAction8"},
-	{"cboCustomAction8", "cboCustomAction1", "Custom controls", "cboCustomAction7", "cboCustomAction9"},
-	{"cboCustomAction9", "cboCustomAction2", "Custom controls", "cboCustomAction8", "cboCustomAction10"},
-	{"cboCustomAction10", "cboCustomAction3", "Custom controls", "cboCustomAction9", "cboCustomAction11"},
-	{"cboCustomAction11", "cboCustomAction4", "Custom controls", "cboCustomAction10", "cboCustomAction12"},
-	{"cboCustomAction12", "cboCustomAction5", "Custom controls", "cboCustomAction11", "cboCustomAction13"},
-	{"cboCustomAction13", "cboCustomAction6", "Custom controls", "cboCustomAction12", "chkAnalogRemap"},
+	{"cboCustomAction8", "cboCustomAction0", "Custom controls", "cboCustomAction7", "cboCustomAction9"},
+	{"cboCustomAction9", "cboCustomAction1", "Custom controls", "cboCustomAction8", "cboCustomAction10"},
+	{"cboCustomAction10", "cboCustomAction2", "Custom controls", "cboCustomAction9", "cboCustomAction11"},
+	{"cboCustomAction11", "cboCustomAction3", "Custom controls", "cboCustomAction10", "cboCustomAction12"},
+	{"cboCustomAction12", "cboCustomAction4", "Custom controls", "cboCustomAction11", "cboCustomAction13"},
+	{"cboCustomAction13", "cboCustomAction5", "Custom controls", "cboCustomAction12", "cboCustomAction14"},
+	{"cboCustomAction14", "cboCustomAction6", "Custom controls", "cboCustomAction13", "cboCustomAction15"},
+	{"cboCustomAction15", "cboCustomAction7", "Custom controls", "cboCustomAction14", "chkAnalogRemap"},
 
-	{"chkAnalogRemap", "Custom controls", "Custom controls", "cboCustomAction13", "0: Mouse"},
+	{"chkAnalogRemap", "Custom controls", "Custom controls", "cboCustomAction15", "0: Mouse"},
 
 	// PanelMisc
 	//  active            move left           move right          move up           move down

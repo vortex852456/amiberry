@@ -91,16 +91,20 @@ struct joypad_map_layout
 	int dpad_right_action = 0;
 	int dpad_up_action = 0;
 	int dpad_down_action = 0;
+        
 	int lstick_select_action = 0;
 	int lstick_left_action = 0;
 	int lstick_right_action = 0;
 	int lstick_up_action = 0;
 	int lstick_down_action = 0;
-	int rstick_select_action = 0;
+	int lstick_analogue = 0;
+        
+	int rstick_select_action = 0;  
 	int rstick_left_action = 0;
 	int rstick_right_action = 0;
 	int rstick_up_action = 0;
 	int rstick_down_action = 0;
+	int rstick_analogue = 0;
 };
 #endif
 

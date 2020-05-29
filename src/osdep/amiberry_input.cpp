@@ -1622,7 +1622,20 @@ int input_get_default_joystick(struct uae_input_device* uid, int num, int port, 
 				                                   ? INPUTEVENT_JOY2_CD32_FFW
 				                                   : INPUTEVENT_JOY1_CD32_FFW;
 		}
-
+		else if (mode == JSEM_MODE_DEFAULT) // default - use opposite port Mouse buttons
+		{
+			thismap[0].left_shoulder_action = thismap[0].left_shoulder_action
+				                                  ? thismap[0].left_shoulder_action
+				                                  : port
+				                                  ? INPUTEVENT_JOY1_FIRE_BUTTON
+				                                  : INPUTEVENT_JOY2_FIRE_BUTTON;
+			thismap[0].right_shoulder_action = thismap[0].right_shoulder_action
+				                                   ? thismap[0].right_shoulder_action
+				                                   : port
+				                                   ? INPUTEVENT_JOY1_2ND_BUTTON
+				                                   : INPUTEVENT_JOY2_2ND_BUTTON;
+		}
+                
 		else if (currprefs.jports[port].id >= JSEM_JOYS) // default, normal joystick
 		{
 			thismap[0].left_shoulder_action = thismap[0].left_shoulder_action
