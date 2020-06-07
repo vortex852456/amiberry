@@ -44,6 +44,8 @@
 #include <sys/ioctl.h>
 #include "keyboard.h"
 
+#include "gui_handling.h"
+
 long int version = 256 * 65536L * UAEMAJOR + 65536L * UAEMINOR + UAESUBREV;
 
 struct uae_prefs currprefs, changed_prefs;
