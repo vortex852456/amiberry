@@ -44,8 +44,6 @@
 #include <sys/ioctl.h>
 #include "keyboard.h"
 
-#include "osdep/gui/gui_handling.h"
-
 long int version = 256 * 65536L * UAEMAJOR + 65536L * UAEMINOR + UAESUBREV;
 
 struct uae_prefs currprefs, changed_prefs;
@@ -845,11 +843,13 @@ static void leave_program(void)
 	do_leave_program();
 }
 
+int get_check_internet_connection_result()
+{
+	return system("ping -c1 -s1 www.google.com");
+}
+
 bool check_internet_connection()
 {
-	int result = system("ping -c1 -s1 www.google.com");
-	ShowMessage("Ping-Result", std::to_string(result), "DEBUG-Message.", "OK", "");
-	
 	return true;
 }
 
