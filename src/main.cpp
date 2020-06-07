@@ -845,8 +845,9 @@ static void leave_program(void)
 
 bool check_internet_connection()
 {
-	if (system("ping -c1 -s1 www.google.com"))
-		return false;
+	int result = system("ping -c1 -s1 www.google.com");
+	ShowMessage("Ping-Result", std::to_string(result), "DEBUG-Message.", "OK", "");
+	
 	return true;
 }
 
