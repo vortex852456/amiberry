@@ -207,7 +207,9 @@ class DownloadXMLButtonActionListener : public gcn::ActionListener
 public:
 	void action(const gcn::ActionEvent& actionEvent) override
 	{
-		ShowMessage("Ping-Result", std::to_string(get_check_internet_connection_result()), "DEBUG-Message.", "OK", "");
+		std::string pingres = std::to_string(system("ping -c1 -s1 google.com"));
+		char const *pingreschar = pingres.c_str();  //use char const* as target type
+		ShowMessage("Ping-Result", pingreschar, "DEBUG-Message.", "OK", "");
 
 		char original_date[MAX_DPATH] = "2000-01-01 at 00:00:01\n";
 		char xml_path[MAX_DPATH];
